@@ -1,0 +1,28 @@
+==============
+About（关于）
+==============
+
+--------------------
+关于本文
+--------------------
+
+本文档将介绍 Cocoa 框架的设计细节和使用方法。
+
+.. note::
+    本文档面向已经有一定 TypeScript 或 JavaScript 基础（最好有 C++ 基础）的读者，
+    本文档不会详细说明公认的 JavaScript 和图形学基础知识。
+
+--------------------
+关于 OpenACG Group
+--------------------
+
+`OpenACG Group <https://github.com/OpenACG-Group>`_
+是由数名来自中国的开发者组建的开源 ACG 社区，我们致力于发现并实践和 ACG 相关的技术，
+侧重于 ADV 视觉小说的开发，Cocoa 是我们的主要维护项目，
+我们的 Specifications（如 Cocoa Scenario Format）主要在
+`Lelucernaire <https://github.com/OpenACG-Group/Lelucernaire>`_ 仓库维护。
+
+我们希望和我们怀揣同样兴趣的人加入我们。
+
+    OpenACG Group - Open, Creative & Love🧡
+

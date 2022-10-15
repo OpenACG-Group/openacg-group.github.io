@@ -1,0 +1,8 @@
+@font-face {
+    font-family: 'FZYouSongS';
+    src: url('./FZYouSongS.ttf');
+}
+
+body {
+    font-family: 'Roboto Slab', 'Helvetica Neue', 'FZYouSongS', Arial, Helvetica, sans-serif;
+}

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="zh-CN" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>1. JavaScript Runtime Environment &mdash; Cocoa  文档</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+      <link rel="stylesheet" href="_static/styles.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/sphinx_highlight.js"></script>
+        <script src="_static/translations.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="索引" href="genindex.html" />
+    <link rel="search" title="搜索" href="search.html" />
+    <link rel="prev" title="1. Cocoa 项目简介" href="introduction.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> Cocoa
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="在文档中搜索" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">1. Cocoa 项目简介</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">JavaScript Runtime</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">1. JavaScript Runtime Environment</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id1">1.1. 简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#url-url-resolution">1.2. URL 解析 (URL Resolution)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#file-scheme">1.2.1. <code class="docutils literal notranslate"><span class="pre">file</span></code> scheme</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#internal-scheme">1.2.2. <code class="docutils literal notranslate"><span class="pre">internal</span></code> scheme</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#synthetic-scheme">1.2.3. <code class="docutils literal notranslate"><span class="pre">synthetic</span></code> scheme</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#canonical-specifier">1.2.4. Canonical Specifier</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#fallback">1.2.5. Fallback</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#dynamic-import">1.3. 动态导入（Dynamic Import）</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-cache">1.4. 模块缓存（Module Cache）</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Cocoa</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li><span class="section-number">1. </span>JavaScript Runtime Environment</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/jsrt_es_module.rst.txt" rel="nofollow"> 查看页面源码</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="javascript-runtime-environment">
+<h1><span class="section-number">1. </span>JavaScript Runtime Environment<a class="headerlink" href="#javascript-runtime-environment" title="此标题的永久链接"></a></h1>
+<section id="id1">
+<h2><span class="section-number">1.1. </span>简介<a class="headerlink" href="#id1" title="此标题的永久链接"></a></h2>
+<p>自 ES6 标准起，JavaScript 引入原生的 module 语法，Cocoa 对此也有相应的支持，
+并且 ES6 模块是 Cocoa 唯一支持的模块语法，其它例如 CommonJS 或 AMD 的解决方案，Cocoa 一概不支持。</p>
+<p>本文将逐步介绍 ES6 在 Cocoa 中的用法，以及一些 ES6 中没有提到的、Cocoa 扩充的概念。</p>
+</section>
+<section id="url-url-resolution">
+<h2><span class="section-number">1.2. </span>URL 解析 (URL Resolution)<a class="headerlink" href="#url-url-resolution" title="此标题的永久链接"></a></h2>
+<p>JavaScript 可以使用如下语法引入模块：</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="nb">Object</span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;URL&#39;</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<p>其中 <code class="docutils literal notranslate"><span class="pre">URL</span></code> 部分指定了一个模块标识符（V8 称为 Specifier），告诉我们去哪里获取到模块代码。
+Cocoa 规定， <em>标准的模块 Specifier</em> 应当遵循如下格式：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">scheme</span><span class="o">&gt;</span><span class="p">:</span><span class="o">//&lt;</span><span class="n">path</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">scheme</span></code> 部分表明后面的 <code class="docutils literal notranslate"><span class="pre">path</span></code> 是何种类型的路径，可能的 <code class="docutils literal notranslate"><span class="pre">scheme</span></code> 有：</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">file</span></code> 指定一个存在于文件系统上的模块；</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">internal</span></code> 指定一个 Cocoa 的内建模块；</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">synthetic</span></code> 指定一个 Synthetic Module，它只包含原生代码。</p></li>
+</ul>
+<section id="file-scheme">
+<h3><span class="section-number">1.2.1. </span><code class="docutils literal notranslate"><span class="pre">file</span></code> scheme<a class="headerlink" href="#file-scheme" title="此标题的永久链接"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">file</span></code> scheme 很简单，它要求 <code class="docutils literal notranslate"><span class="pre">path</span></code> 是一个存在于文件系统上的路径。
+如果使用相对路径，则该路径是以该源文件所在的目录作为当前目录。</p>
+<p>例如，在 <code class="docutils literal notranslate"><span class="pre">/some/path/loader.js</span></code> 中有如下 import 语句：</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="c1">// 注意这里 file:// 之后直接是 other.js</span><span class="w"></span>
+<span class="k">import</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">Some</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;file://other.js&#39;</span><span class="p">;</span><span class="w"></span>
+<span class="c1">// 或者：</span><span class="w"></span>
+<span class="k">import</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">Some</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;file://./other.js&#39;</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<p>则被引入的 JavaScript 模块是 <code class="docutils literal notranslate"><span class="pre">/some/path/other.js</span></code>.</p>
+<p>若使用绝对路径，则可以直接 <code class="docutils literal notranslate"><span class="pre">file:///some/path/other.js</span></code> 即可。</p>
+</section>
+<section id="internal-scheme">
+<h3><span class="section-number">1.2.2. </span><code class="docutils literal notranslate"><span class="pre">internal</span></code> scheme<a class="headerlink" href="#internal-scheme" title="此标题的永久链接"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">internal</span></code> 用于引入 Cocoa 内建的 JavaScript 模块，例如：</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="c1">// 加载内建模块 /some/path/some.js</span><span class="w"></span>
+<span class="k">import</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">Some</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;internal:///some/path/some.js&#39;</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<p>需要注意的是，虽然内建模块也是以类似 UNIX 路径的方式表示的，但是它没有类似 <code class="docutils literal notranslate"><span class="pre">file</span></code> scheme
+那样的相对路径解析规则，原则上来说内建模块应当只允许绝对路径，但是为了方便书写 Cocoa 也允许省略第一个 <code class="docutils literal notranslate"><span class="pre">/</span></code> 。
+即， <code class="docutils literal notranslate"><span class="pre">internal://some.js</span></code> 和 <code class="docutils literal notranslate"><span class="pre">internal:///some.js</span></code> 是等价的。</p>
+</section>
+<section id="synthetic-scheme">
+<h3><span class="section-number">1.2.3. </span><code class="docutils literal notranslate"><span class="pre">synthetic</span></code> scheme<a class="headerlink" href="#synthetic-scheme" title="此标题的永久链接"></a></h3>
+<p>Synthetic Module 类似于内建模块，但由 <code class="docutils literal notranslate"><span class="pre">internal</span></code> 标识的内建模块是由 JavaScript 书写的，
+但是 Synthetic Module 则是 <em>完全不包含 JavaScript 代码的原生模块</em> 。
+每一个 Synthetic Module 的导出对象都对应一个 C++ 函数、类或对象。</p>
+<p>更进一步，Synthetic Module 不一定就是 Cocoa 内建的，
+通过 <code class="docutils literal notranslate"><span class="pre">--runtime-preload</span></code> 命令行参数或者 <code class="docutils literal notranslate"><span class="pre">introspect.loadSharedObject</span></code> 函数，可以从外部加载一个共享库文件，
+这些共享库也可能会提供 Synthetic Module。</p>
+<p>毫无疑问，Synthetic Module 就是 Cocoa 实现 __语言绑定（Language Binding）__ 的机制，
+关于语言绑定，我们将在后文介绍细节。</p>
+<p><code class="docutils literal notranslate"><span class="pre">synthetic</span></code> scheme 可以指定加载一个 Synthetic Module， <code class="docutils literal notranslate"><span class="pre">path</span></code> 部分此时不再是路径，
+可以是任意字符串，表示该 Synthetic Module 的名称。</p>
+<p>例如，加载 <code class="docutils literal notranslate"><span class="pre">core</span></code> 模块：</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="k">import</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">std</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;synthetic://core&#39;</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+</section>
+<section id="canonical-specifier">
+<h3><span class="section-number">1.2.4. </span>Canonical Specifier<a class="headerlink" href="#canonical-specifier" title="此标题的永久链接"></a></h3>
+<p>标准化的 specifier 用于 Cocoa 在内部标识一个 JavaScript 模块，定义如下：</p>
+<ul class="simple">
+<li><p>对于 <code class="docutils literal notranslate"><span class="pre">file</span></code> scheme，标准化 specifier 中 <code class="docutils literal notranslate"><span class="pre">path</span></code> 是绝对路径，如果有符号链接，
+则递归地解析符号链接，直到得到真正的文件路径；</p></li>
+<li><p>对于 <code class="docutils literal notranslate"><span class="pre">internal</span></code> scheme，标准化 specifier 中 <code class="docutils literal notranslate"><span class="pre">path</span></code> 一定是绝对路径，以 <code class="docutils literal notranslate"><span class="pre">/</span></code> 开头；</p></li>
+<li><p>对于 <code class="docutils literal notranslate"><span class="pre">synthetic</span></code> scheme，由于没有使用路径，以 <code class="docutils literal notranslate"><span class="pre">synthetic://specifier</span></code> 格式给出的 URL 即为标准化 specifier。</p></li>
+</ul>
+<p>使用标准化 specifier 来作为内部的模块标识符的唯一理由是，它保证了对于某种特定 scheme 的唯一性，即，
+绝对路径在系统中是唯一的，在内建模块中也是唯一的，这为 Cocoa 建立 Module Cache 提供了基础。</p>
+</section>
+<section id="fallback">
+<h3><span class="section-number">1.2.5. </span>Fallback<a class="headerlink" href="#fallback" title="此标题的永久链接"></a></h3>
+<p>方便起见，Cocoa 允许省略 URL 中的一些部分，以缩短 URL 的书写，这种情况下，
+Cocoa 将自动尝试补全 URL，并按照一般 URL 进行解析。</p>
+<p>如果 scheme 部分被省略，则 Cocoa 会先将其当作 <code class="docutils literal notranslate"><span class="pre">synthetic</span></code> 处理，
+若 <code class="docutils literal notranslate"><span class="pre">path</span></code> 部分不能匹配到一个合适的 Synthetic Module，则再将其作为 <code class="docutils literal notranslate"><span class="pre">file</span></code> 处理，
+若 <code class="docutils literal notranslate"><span class="pre">path</span></code> 也不是一个有效的文件系统路径，则判定为无效 URL。可见， <code class="docutils literal notranslate"><span class="pre">internal</span></code>
+不在自动补全之列，它总是需要显式的写出。</p>
+<p>对于 <code class="docutils literal notranslate"><span class="pre">file</span></code> 和 <code class="docutils literal notranslate"><span class="pre">internal</span></code> ，JavaScript 文件的拓展名也可以省略，
+这种情况下，Cocoa 会按顺序尝试 <code class="docutils literal notranslate"><span class="pre">.js</span></code> 和 <code class="docutils literal notranslate"><span class="pre">.mjs</span></code> 拓展名，如果都没有成功，则判定为无效 URL。</p>
+<p>示例：</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="k">import</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">std</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;core&#39;</span><span class="p">;</span><span class="w"></span>
+<span class="c1">// =&gt; synthetic://core</span><span class="w"></span>
+
+<span class="k">import</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">CanvasKit</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;internal://canvaskit&#39;</span><span class="p">;</span><span class="w"></span>
+<span class="c1">// =&gt; internal:///canvaskit.js</span><span class="w"></span>
+
+<span class="c1">// Source file is /path/to/some/foo.js</span><span class="w"></span>
+<span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="nx">Some</span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;./bar&#39;</span><span class="p">;</span><span class="w"></span>
+<span class="c1">// =&gt; file:///path/to/some/bar.js</span><span class="w"></span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="dynamic-import">
+<h2><span class="section-number">1.3. </span>动态导入（Dynamic Import）<a class="headerlink" href="#dynamic-import" title="此标题的永久链接"></a></h2>
+<p><em>动态导入（Dynamic Import）</em> 和 <em>静态导入（Static Import）</em> 遵循完全一致的 URL 解析方式。
+只是对于动态导入而言，它返回一个 <code class="docutils literal notranslate"><span class="pre">Promise&lt;Module&gt;</span></code> 对象，用户应该使用 <code class="docutils literal notranslate"><span class="pre">await</span></code> 或者 <code class="docutils literal notranslate"><span class="pre">then</span></code>
+的方法处理它。</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">const</span><span class="w"> </span><span class="nx">std</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="k">import</span><span class="p">(</span><span class="s1">&#39;core&#39;</span><span class="p">);</span><span class="w"></span>
+<span class="c1">// std is a Module object which contains all the exports of the imported module.</span><span class="w"></span>
+<span class="nx">std</span><span class="p">.</span><span class="nx">print</span><span class="p">(</span><span class="s2">&quot;Hello, World!\n&quot;</span><span class="p">);</span><span class="w"></span>
+</pre></div>
+</div>
+<p>对于目前支持的所有类型的 URL，Cocoa 都会立刻解析它们并导入对应的模块，
+因此， <em>动态导入返回的 Promise 对象总是处于 fulfilled 状态</em> 。</p>
+</section>
+<section id="module-cache">
+<h2><span class="section-number">1.4. </span>模块缓存（Module Cache）<a class="headerlink" href="#module-cache" title="此标题的永久链接"></a></h2>
+<p>模块缓存是指，当一个模块被导入多次时，它只会在第一次被导入时被实例化（Instantiate）一次。</p>
+<p>考虑下面一组 JavaScript 模块：</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="c1">// common.js:</span><span class="w"></span>
+<span class="k">import</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="nx">std</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;core&#39;</span><span class="p">;</span><span class="w"></span>
+
+<span class="c1">// foo.js:</span><span class="w"></span>
+<span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="nx">Some</span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;./common.js&#39;</span><span class="p">;</span><span class="w"></span>
+
+<span class="c1">// bar.js:</span><span class="w"></span>
+<span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="nx">Some</span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;./common.js&#39;</span><span class="p">;</span><span class="w"></span>
+<span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="nx">OtherSome</span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;./foo.js&#39;</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<p>运行 <code class="docutils literal notranslate"><span class="pre">bar.js</span></code>，则 <code class="docutils literal notranslate"><span class="pre">common.js</span></code> 立刻被导入，由于这两个模块都是首次被导入，
+因此都会被求值一次。而当 <code class="docutils literal notranslate"><span class="pre">foo.js</span></code> 也被导入时， <code class="docutils literal notranslate"><span class="pre">common.js</span></code> 不会再被求值，而是直接使用实例化之后的模块。</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="introduction.html" class="btn btn-neutral float-left" title="1. Cocoa 项目简介" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> 上一页</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; 版权所有 2022, OpenACG Group.</p>
+  </div>
+
+  利用 <a href="https://www.sphinx-doc.org/">Sphinx</a> 构建，使用了 
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">主题</a>
+    由 <a href="https://readthedocs.org">Read the Docs</a>开发.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
