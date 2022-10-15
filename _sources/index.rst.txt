@@ -16,7 +16,7 @@ Cocoa 用户文档
 
 .. toctree::
    :maxdepth: 2
-   :caption: JavaScript Runtime
+   :caption: JavaScript Runtime Environment
    :numbered:
 
    jsrt_es_module
