@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="zh-CN" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>1. 渲染框架概览 &mdash; Cocoa  文档</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+      <link rel="stylesheet" href="_static/styles.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/sphinx_highlight.js"></script>
+        <script src="_static/translations.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="索引" href="genindex.html" />
+    <link rel="search" title="搜索" href="search.html" />
+    <link rel="next" title="2. Glamor 异步渲染模型" href="rdrfw_async_rendering_model.html" />
+    <link rel="prev" title="1. ECMAScript 模块" href="jsrt_es_module.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> Cocoa
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="在文档中搜索" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="intro_introduction.html">1. Cocoa 项目简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intro_about_this.html">2. About（关于）</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">JavaScript Runtime Environment</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="jsrt_es_module.html">1. ECMAScript 模块</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Rendering Framework</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">1. 渲染框架概览</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rdrfw_async_rendering_model.html">2. Glamor 异步渲染模型</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Cocoa</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li><span class="section-number">1. </span>渲染框架概览</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/rdrfw_overview.rst.txt" rel="nofollow"> 查看页面源码</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="id1">
+<h1><span class="section-number">1. </span>渲染框架概览<a class="headerlink" href="#id1" title="此标题的永久链接"></a></h1>
+<p>该图中紫色的部分即为 Cocoa 渲染框架：</p>
+<img alt="_images/core_architecture.png" src="_images/core_architecture.png" />
+<p>可以看到，Cocoa 的 2D 渲染器叫做 Glamor，在代码中常常缩写为 GL（Cocoa 的文档、代码中若非特别指明，
+所有的 GL 缩写均是指 Glamor 渲染器，而不是 OpenGL）。要在 JavaScript 中使用 Glamor
+渲染器，只需用 <code class="docutils literal notranslate"><span class="pre">import</span></code> 语句导入即可：</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="k">import</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">GL</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;glamor&#39;</span><span class="p">;</span><span class="w"></span>
+<span class="c1">// 或者：</span><span class="w"></span>
+<span class="k">import</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">GL</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;synthetic://glamor&#39;</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">GL</span></code> 对象包含了 Glamor 的所有公开符号。
+Glamor 渲染器不仅提供了基于图层树的光栅化引擎，还包含对 Window System 的抽象（如 Wayland），
+JavaScript 可以无需关心底层窗口管理和缓冲区管理的细节，直接创建指定尺寸的窗口，
+然后使用指定的渲染后端（CPU 渲染器或 GPU 渲染器）在窗口上绘制内容。</p>
+<p>在 JavaScript 中使用 Glamor 渲染器的第一步是初始化它：</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="nx">GL</span><span class="p">.</span><span class="nx">RenderHost</span><span class="p">.</span><span class="nx">Initialize</span><span class="p">({</span><span class="w"></span>
+<span class="w">    </span><span class="nx">name</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;Test Application&#39;</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nx">major</span><span class="o">:</span><span class="w"> </span><span class="mf">1</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nx">minor</span><span class="o">:</span><span class="w"> </span><span class="mf">0</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nx">patch</span><span class="o">:</span><span class="w"> </span><span class="mf">0</span><span class="w"></span>
+<span class="p">});</span><span class="w"></span>
+</pre></div>
+</div>
+<p>在这里，用户被要求提供一个 <code class="docutils literal notranslate"><span class="pre">ApplicationInfo</span></code> 对象，用于描述 <em>用户的应用程序</em> 的相关信息。
+这些信息仅仅用于标识用户的应用程序（例如，当 Vulkan 请求应用程序的名称时，我们会使用 <code class="docutils literal notranslate"><span class="pre">name</span></code> 属性提供的值），
+不会对渲染器的行为造成任何影响。</p>
+<div class="admonition note">
+<p class="admonition-title">备注</p>
+<p>此处 <code class="docutils literal notranslate"><span class="pre">name</span></code> 属性提供的值不会被设定为窗口的默认标题，窗口的默认标题为空，需要用户显式地设置。</p>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">RenderHost.Initialize</span></code> 函数初始化渲染器全局实例，它同时创建一个渲染线程（在下一节中将详细介绍）
+以便执行异步渲染任务。一旦该初始化函数被调用，渲染器即进入活动（Active）状态，JavaScript 事件循环将不会退出
+（随时等待来自渲染线程的消息）。要释放这个活动的渲染器实例，使用 <code class="docutils literal notranslate"><span class="pre">RenderHost.Dispose</span></code> 函数即可：</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="nx">GL</span><span class="p">.</span><span class="nx">RenderHost</span><span class="p">.</span><span class="nx">Dispose</span><span class="p">();</span><span class="w"></span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">Dispose</span></code> 函数是同步的，该函数将强制停止渲染线程，并释放渲染器所使用的资源，渲染器进入初始化前的状态，
+JavaScript 事件循环不需再等待渲染线程的消息，如果此后事件循环为空，Cocoa 进程将按正常流程退出。</p>
+<div class="admonition warning">
+<p class="admonition-title">警告</p>
+<p>所有对 Glamor 渲染器的进一步操作，都必须先进行上述初始化步骤，否则 Cocoa 的行为未定义。
+同时，全局渲染器实例（Glamor 实例）是唯一的，这意味着
+<em>在同一个 Cocoa 进程中，不能同时存在多个 Glamor 实例</em> 。
+<code class="docutils literal notranslate"><span class="pre">Initialize</span></code> 函数只能被调用一次（除非此前已经调用了 <code class="docutils literal notranslate"><span class="pre">Dispose</span></code> 函数），
+在一个已经初始化 Glamor 的进程中再次调用 <code class="docutils literal notranslate"><span class="pre">Initialize</span></code> 函数的行为是未定义的。</p>
+</div>
+<p>最后需要注意的是，Glamor 中一些对象的资源管理不依赖于 JavaScript 的垃圾回收机制（之后您会看到这样做的必要性），
+对于那些对象，用户需要显式地调用类似 <code class="docutils literal notranslate"><span class="pre">dispose</span></code> 或 <code class="docutils literal notranslate"><span class="pre">close</span></code> 一类的方法，
+将它们持有的资源释放。</p>
+<div class="admonition warning">
+<p class="admonition-title">警告</p>
+<p>一旦一个对象被 dispose，就不应该再以任何方式继续使用它。
+调用一个 disposed 状态的对象上的任何方法或访问其上的任何属性都是未定义行为。</p>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="jsrt_es_module.html" class="btn btn-neutral float-left" title="1. ECMAScript 模块" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> 上一页</a>
+        <a href="rdrfw_async_rendering_model.html" class="btn btn-neutral float-right" title="2. Glamor 异步渲染模型" accesskey="n" rel="next">下一页 <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; 版权所有 2022, OpenACG Group.</p>
+  </div>
+
+  利用 <a href="https://www.sphinx-doc.org/">Sphinx</a> 构建，使用了 
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">主题</a>
+    由 <a href="https://readthedocs.org">Read the Docs</a>开发.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

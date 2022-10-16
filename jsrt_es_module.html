@@ -146,7 +146,7 @@ Cocoa 规定， <em>标准的模块 Specifier</em> 应当遵循如下格式：</
 <p>更进一步，Synthetic Module 不一定就是 Cocoa 内建的，
 通过 <code class="docutils literal notranslate"><span class="pre">--runtime-preload</span></code> 命令行参数或者 <code class="docutils literal notranslate"><span class="pre">introspect.loadSharedObject</span></code> 函数，可以从外部加载一个共享库文件，
 这些共享库也可能会提供 Synthetic Module。</p>
-<p>毫无疑问，Synthetic Module 就是 Cocoa 实现 __语言绑定（Language Binding）__ 的机制，
+<p>毫无疑问，Synthetic Module 就是 Cocoa 实现 <strong>语言绑定（Language Binding）</strong> 的机制，
 关于语言绑定，我们将在后文介绍细节。</p>
 <p><code class="docutils literal notranslate"><span class="pre">synthetic</span></code> scheme 可以指定加载一个 Synthetic Module， <code class="docutils literal notranslate"><span class="pre">path</span></code> 部分此时不再是路径，
 可以是任意字符串，表示该 Synthetic Module 的名称。</p>

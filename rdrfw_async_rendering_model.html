@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="zh-CN" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>2. Glamor 异步渲染模型 &mdash; Cocoa  文档</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+      <link rel="stylesheet" href="_static/styles.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/sphinx_highlight.js"></script>
+        <script src="_static/translations.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="索引" href="genindex.html" />
+    <link rel="search" title="搜索" href="search.html" />
+    <link rel="prev" title="1. 渲染框架概览" href="rdrfw_overview.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> Cocoa
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="在文档中搜索" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="intro_introduction.html">1. Cocoa 项目简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intro_about_this.html">2. About（关于）</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">JavaScript Runtime Environment</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="jsrt_es_module.html">1. ECMAScript 模块</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Rendering Framework</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="rdrfw_overview.html">1. 渲染框架概览</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">2. Glamor 异步渲染模型</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#overview">2.1. Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#asynchronous-operations">2.2. 异步操作（Asynchronous Operations）</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#concepts">2.2.1. Concepts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id1">2.2.2. 原生层实现</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">2.2.3. 理解异步函数调用和信号槽</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Cocoa</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li><span class="section-number">2. </span>Glamor 异步渲染模型</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/rdrfw_async_rendering_model.rst.txt" rel="nofollow"> 查看页面源码</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="glamor">
+<h1><span class="section-number">2. </span>Glamor 异步渲染模型<a class="headerlink" href="#glamor" title="此标题的永久链接"></a></h1>
+<section id="overview">
+<h2><span class="section-number">2.1. </span>Overview<a class="headerlink" href="#overview" title="此标题的永久链接"></a></h2>
+<p>Cocoa 是一个多线程程序，除了由 libuv 启动的线程池外，Cocoa 中最为重要的线程可能就是
+<em>渲染线程（Rendering Thread）</em> 了。
+渲染线程负责了所有图形资源的获取、管理和释放，并实现了一系列异步渲染 API 和信号槽机制。
+在 Cocoa 中，一切渲染相关的任务都由渲染线程异步执行，主线程无须等待渲染过程结束，同时，
+所有用户输入事件都由渲染线程处理，并以信号量（并非 POSIX 中定义的信号量）的形式通知主线程。</p>
+<p>总而言之，渲染线程实现了两个功能，异步渲染 API 和图形资源管理，
+接下来我们将从这两方面来介绍渲染线程。</p>
+</section>
+<section id="asynchronous-operations">
+<h2><span class="section-number">2.2. </span>异步操作（Asynchronous Operations）<a class="headerlink" href="#asynchronous-operations" title="此标题的永久链接"></a></h2>
+<section id="concepts">
+<h3><span class="section-number">2.2.1. </span>Concepts<a class="headerlink" href="#concepts" title="此标题的永久链接"></a></h3>
+<p>我们首先介绍一些概念，在后文中会使用到：</p>
+<ul class="simple">
+<li><p>操作（Operation）: 指由主线程发起的函数调用，该调用并不会立刻执行，而是被提交到消息队列中，
+在合适的时候会被渲染线程执行。操作的执行结果也会放回消息队列中，在合适的时候被主线程读取。</p></li>
+<li><p>信号（Signal）和槽（Slot）: 操作是由主线程主动发起的函数调用，而信号则是由渲染线程发起的一种通知机制。
+函数对象可以连接（Connect）到一个信号上，这些函数就称为槽。当一个信号被发出（Emit）时，
+所有连接到该信号的槽都会被调用，顺序不作保证，我们仅保证槽会在信号被接受的那个线程上被调用（通常是主线程）。</p></li>
+<li><p>RenderHost: 主线程的一方称为 <strong>RenderHost</strong> ，相对应的，渲染线程的一方称为 <strong>RenderClient</strong> 。</p></li>
+</ul>
+</section>
+<section id="id1">
+<h3><span class="section-number">2.2.2. </span>原生层实现<a class="headerlink" href="#id1" title="此标题的永久链接"></a></h3>
+<div class="admonition note">
+<p class="admonition-title">备注</p>
+<p>没有 C++ 经验和多线程开发经验的读者可以跳过此部分，不影响后续的阅读。</p>
+</div>
+<p>实现异步 API 的基础是可靠的线程间通讯机制。GLAMOR 使用了 libuv 的 async handle
+配合消息队列来实现线程间通讯。这一套机制比较复杂，下图基本阐明了它的工作原理：</p>
+<img alt="_images/async_rendering_thread_model.svg" src="_images/async_rendering_thread_model.svg" /><p>如图所示，渲染线程和主线程都分别有自己的事件循环和消息队列。红色字体标记的是可以引起整个流程的操作，
+分别是主线程进行异步函数调用的 <code class="docutils literal notranslate"><span class="pre">Invoke</span></code> 函数和渲染线程发出信号的 <code class="docutils literal notranslate"><span class="pre">Emit</span></code> 函数。</p>
+<p>当 <code class="docutils literal notranslate"><span class="pre">Invoke</span></code> 函数被调用时，在主线程上将调用相关的所有信息包装为 <code class="docutils literal notranslate"><span class="pre">RenderHostInvocation</span></code> 对象，
+并将其推入渲染线程的消息队列，接着立刻通知渲染线程的事件循环。完成这些工作后，<code class="docutils literal notranslate"><span class="pre">Invoke</span></code> 函数返回。
+这是异步函数调用的调用阶段。</p>
+<p>在渲染线程中，事件循环负责调度来自主线程的通知，在合适的时候会触发渲染线程上的处理函数 <code class="docutils literal notranslate"><span class="pre">OnInvocationFromHost</span></code>，
+接着该函数从消息队列中取出 <code class="docutils literal notranslate"><span class="pre">RenderHostInvocation</span></code> 对象，根据其中传递来的信息调用真正的处理函数，
+处理函数完成后，<code class="docutils literal notranslate"><span class="pre">RenderHostInvocation</span></code> 的状态被更新（存入返回状态和返回值），
+通过 <code class="docutils literal notranslate"><span class="pre">WakeupHost</span></code> 函数将更新后的对象推入主线程的消息队列（此时 <code class="docutils literal notranslate"><span class="pre">RenderHostInvocation</span></code> 被
+转换为基类类型 <code class="docutils literal notranslate"><span class="pre">RenderClientTransfer</span></code>），并立即通知主线程的事件循环。
+这是异步函数调用的返回阶段，也称为响应（Response）。</p>
+<p>对于信号量，也遵循类似的过程，由 <code class="docutils literal notranslate"><span class="pre">Emit</span></code> 函数将有关信号的所有信息包装为 <code class="docutils literal notranslate"><span class="pre">RenderClientSignalEmit</span></code>
+对象，然后同样由 <code class="docutils literal notranslate"><span class="pre">WakeupHost</span></code> 函数将该对象推入主线程的消息队列，并立即通知主线程的事件循环。</p>
+<p>同样，主线程的事件循环也会在合适的时机调用对应的处理函数 <code class="docutils literal notranslate"><span class="pre">OnResponseFromClient</span></code>，
+该函数将判断从消息队列取出的 <code class="docutils literal notranslate"><span class="pre">RenderClientTransfer</span></code> 对象的类型，并分别调用对应的函数来处理。</p>
+<p>对于异步函数调用的返回数据，将从 <code class="docutils literal notranslate"><span class="pre">RenderClientTransfer</span></code> 中解出数据，转移到 <code class="docutils literal notranslate"><span class="pre">RenderHostCallbackInfo</span></code>
+中，该对象将直接被传递给用户在调用时注册的用于接收返回值的回调函数。</p>
+<p>对于信号量，将从 <code class="docutils literal notranslate"><span class="pre">RenderClientTransfer</span></code> 中解出数据，转移到 <code class="docutils literal notranslate"><span class="pre">RenderHostSlotCallbackInfo</span></code> 中，
+该对象将直接被传递给用户注册的槽函数。</p>
+</section>
+<section id="id2">
+<h3><span class="section-number">2.2.3. </span>理解异步函数调用和信号槽<a class="headerlink" href="#id2" title="此标题的永久链接"></a></h3>
+<p>在异步函数调用和信号槽这两大异步机制中，有两个主要角色：RenderHost 和 RenderClient，
+RenderHost 是对主线程（JavaScript 线程）的抽象，而 RenderClient 则是对渲染线程的抽象。</p>
+<p>RenderHost 可以对 RenderClient 发起函数调用，但是该函数调用并不实际在 RenderHost 上执行，
+而是在 RenderClient 上执行，这是一种「远程」调用，而 RenderHost 可以等待 RenderClient 执行完毕，
+并像普通函数调用那样取得结果。在 JavaScript 中，这表现为该函数调用以 <code class="docutils literal notranslate"><span class="pre">Promise</span></code> 对象的形式返回，
+用户可以使用 <code class="docutils literal notranslate"><span class="pre">await</span></code> 或 <code class="docutils literal notranslate"><span class="pre">then</span></code> 来处理返回值。如果函数调用中发生错误，上一小节中提到的 <code class="docutils literal notranslate"><span class="pre">RenderClientTransfer</span></code>
+对象会携带着错误信息一同返回给主线程，在 JavaScript 中表现为 promise 的 reject。</p>
+<p>该实例演示了一个最简单的异步函数调用（忽略错误处理）：</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="c1">// 假设 Adder.add 是一个异步函数调用，它返回两个数相加的结果</span><span class="w"></span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">Adder</span><span class="p">.</span><span class="nx">add</span><span class="p">(</span><span class="mf">1</span><span class="p">,</span><span class="w"> </span><span class="mf">2</span><span class="p">);</span><span class="w"></span>
+<span class="nx">std</span><span class="p">.</span><span class="nx">print</span><span class="p">(</span><span class="sb">`Result is </span><span class="si">${</span><span class="nx">result</span><span class="si">}</span><span class="sb">\n`</span><span class="p">);</span><span class="w"></span>
+
+<span class="c1">// 或者使用 then 来处理：</span><span class="w"></span>
+<span class="nx">Adder</span><span class="p">.</span><span class="nx">add</span><span class="p">(</span><span class="mf">1</span><span class="p">,</span><span class="w"> </span><span class="mf">2</span><span class="p">).</span><span class="nx">then</span><span class="p">((</span><span class="nx">value</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="nx">std</span><span class="p">.</span><span class="nx">print</span><span class="p">(</span><span class="sb">`Result is </span><span class="si">${</span><span class="nx">value</span><span class="si">}</span><span class="sb">\n`</span><span class="p">);</span><span class="w"></span>
+<span class="p">});</span><span class="w"></span>
+</pre></div>
+</div>
+<p>有一些异步函数调用没有返回值，在 JavaScript 中表现为它返回一个 <code class="docutils literal notranslate"><span class="pre">Promise&lt;void&gt;</span></code> 对象，
+这种情况下，该 promise 的 resolve 表示异步函数调用已成功完成。</p>
+<p>对于信号量而言，它用于 RenderClient 主动地通知 RenderHost，
+在 JavaScript 中表现为回调函数被主动调用。</p>
+<p>在 JavaScript 中，信号量是依托于对象存在的，如果一个对象继承自 <code class="docutils literal notranslate"><span class="pre">RenderClientObject</span></code> 对象，
+则它就可以使用信号槽机制。在这些对象上，都有一个 <code class="docutils literal notranslate"><span class="pre">connect</span></code> 和 <code class="docutils literal notranslate"><span class="pre">disconnect</span></code> 方法，
+前者用于将回调函数（槽）连接到一个特定的信号，后者用于断开连接：</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="c1">// 创建一个对象，这体现了信号槽机制是依托于对象存在的</span><span class="w"></span>
+<span class="c1">// （仅作为示例，实际 Cocoa 中不存在内建的名为 Emitter 的对象）</span><span class="w"></span>
+<span class="kd">let</span><span class="w"> </span><span class="nx">emitter</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">Emitter</span><span class="p">();</span><span class="w"></span>
+
+<span class="c1">// 假设 Emitter 对象具有信号量 notice，将一个回调函数连接到这个信号量上</span><span class="w"></span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">connection</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">emitter</span><span class="p">.</span><span class="nx">connect</span><span class="p">(</span><span class="s1">&#39;notice&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="nx">content</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="c1">// 信号量携带一些参数，它们会直接被传递给槽函数，例如这里的 content</span><span class="w"></span>
+<span class="w">    </span><span class="nx">std</span><span class="p">.</span><span class="nx">print</span><span class="p">(</span><span class="sb">`Notice: </span><span class="si">${</span><span class="nx">content</span><span class="si">}</span><span class="sb">\n`</span><span class="p">);</span><span class="w"></span>
+<span class="p">});</span><span class="w"></span>
+
+<span class="c1">// 同一个对象的同一个信号量上可以连接多个槽</span><span class="w"></span>
+<span class="nx">emitter</span><span class="p">.</span><span class="nx">connect</span><span class="p">(</span><span class="s1">&#39;notice&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="nx">content</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="c1">// 执行一些其它动作</span><span class="w"></span>
+<span class="p">});</span><span class="w"></span>
+
+<span class="c1">// 随时可以断开槽的连接</span><span class="w"></span>
+<span class="nx">emitter</span><span class="p">.</span><span class="nx">disconnect</span><span class="p">(</span><span class="nx">connection</span><span class="p">);</span><span class="w"></span>
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">警告</p>
+<p>尽管同一个对象上的同一个信号量上可以连接多个槽，但是这些槽函数的调用顺序是没有任何保证的，
+用户不应当假设任何槽函数被调用的顺序。</p>
+</div>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="rdrfw_overview.html" class="btn btn-neutral float-left" title="1. 渲染框架概览" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> 上一页</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; 版权所有 2022, OpenACG Group.</p>
+  </div>
+
+  利用 <a href="https://www.sphinx-doc.org/">Sphinx</a> 构建，使用了 
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">主题</a>
+    由 <a href="https://readthedocs.org">Read the Docs</a>开发.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
