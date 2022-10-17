@@ -2,9 +2,9 @@
 Glamor 异步渲染模型
 ====================
 
----------
-Overview
----------
+-----
+概览
+-----
 
 Cocoa 是一个多线程程序，除了由 libuv 启动的线程池外，Cocoa 中最为重要的线程可能就是
 *渲染线程（Rendering Thread）* 了。
@@ -12,12 +12,11 @@ Cocoa 是一个多线程程序，除了由 libuv 启动的线程池外，Cocoa �
 在 Cocoa 中，一切渲染相关的任务都由渲染线程异步执行，主线程无须等待渲染过程结束，同时，
 所有用户输入事件都由渲染线程处理，并以信号量（并非 POSIX 中定义的信号量）的形式通知主线程。
 
-总而言之，渲染线程实现了两个功能，异步渲染 API 和图形资源管理，
-接下来我们将从这两方面来介绍渲染线程。
+总而言之，渲染线程实现了两个功能，异步渲染 API 和图形资源管理。
 
------------------------------------
-异步操作（Asynchronous Operations）
------------------------------------
+-------------------------
+理解异步函数调用和信号槽
+-------------------------
 
 ^^^^^^^^^^
 Concepts
@@ -25,14 +24,17 @@ Concepts
 
 我们首先介绍一些概念，在后文中会使用到：
 
-* 操作（Operation）: 指由主线程发起的函数调用，该调用并不会立刻执行，而是被提交到消息队列中，
-  在合适的时候会被渲染线程执行。操作的执行结果也会放回消息队列中，在合适的时候被主线程读取。
+*操作（Operation）*
+    指由主线程发起的函数调用，该调用并不会立刻执行，而是被提交到消息队列中，
+    在合适的时候会被渲染线程执行。操作的执行结果也会放回消息队列中，在合适的时候被主线程读取。
 
-* 信号（Signal）和槽（Slot）: 操作是由主线程主动发起的函数调用，而信号则是由渲染线程发起的一种通知机制。
-  函数对象可以连接（Connect）到一个信号上，这些函数就称为槽。当一个信号被发出（Emit）时，
-  所有连接到该信号的槽都会被调用，顺序不作保证，我们仅保证槽会在信号被接受的那个线程上被调用（通常是主线程）。
+*信号（Signal）和槽（Slot）*
+    操作是由主线程主动发起的函数调用，而信号则是由渲染线程发起的一种通知机制。
+    函数对象可以连接（Connect）到一个信号上，这些函数就称为槽。当一个信号被发出（Emit）时，
+    所有连接到该信号的槽都会被调用，顺序不作保证，我们仅保证槽会在信号被接受的那个线程上被调用（通常是主线程）。
 
-* RenderHost: 主线程的一方称为 **RenderHost** ，相对应的，渲染线程的一方称为 **RenderClient** 。
+*RenderHost*
+    主线程的一方称为 **RenderHost** ，相对应的，渲染线程的一方称为 **RenderClient**.
 
 ^^^^^^^^^^
 原生层实现
@@ -72,9 +74,9 @@ Concepts
 对于信号量，将从 ``RenderClientTransfer`` 中解出数据，转移到 ``RenderHostSlotCallbackInfo`` 中，
 该对象将直接被传递给用户注册的槽函数。
 
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-理解异步函数调用和信号槽
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+JavaScript 中的异步调用和信号槽
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 在异步函数调用和信号槽这两大异步机制中，有两个主要角色：RenderHost 和 RenderClient，
 RenderHost 是对主线程（JavaScript 线程）的抽象，而 RenderClient 则是对渲染线程的抽象。
@@ -131,3 +133,191 @@ RenderHost 可以对 RenderClient 发起函数调用，但是该函数调用并�
 .. warning::
     尽管同一个对象上的同一个信号量上可以连接多个槽，但是这些槽函数的调用顺序是没有任何保证的，
     用户不应当假设任何槽函数被调用的顺序。
+
+------------------------
+渲染线程控制相关 API
+------------------------
+
+.. note::
+    关于 API 的详细信息，读者参见 API 文档。本文档不会详细介绍每个 API。
+    此处介绍一些 API 是为了说明它们应该如何、在何时被使用。
+
+在 ``RenderHost`` 对象上有数个静态方法，用于控制渲染线程的行为和线程间同步。
+
+使用 ``WaitForSyncBarrier`` 方法可以使当前线程阻塞，直到渲染线程将目前为止所有的消息处理完毕。
+该函数引发的阻塞是真正意义上的阻塞，而不是在事件循环中等待，整个 JavaScript 线程会被暂停
+（如果当前 JavaScript 运行时连接到了 Inspector，则 Inspector 也会暂停响应），
+直到渲染线程清空消息队列或达到最大等待时间。
+
+.. note::
+    如果阻塞期间有来自渲染线程的信号量，它们会在解除阻塞后被处理，且严格按照信号被发送的顺序处理。
+
+该方法用于显式地等待渲染线程完成先前提交的所有请求，若渲染线程被大量的请求占用，
+调用该方法可以暂停主线程来缓解渲染线程的压力。在一些调试情景下，该函数也十分有用。
+
+另一个需要介绍的方法是 ``SleepRendererFor`` ，该函数可以使渲染线程阻塞一定的时间，
+用以模拟渲染线程暂时失去响应的状态。需要注意的是，该函数并不会立刻使渲染线程阻塞，
+而是等待先前发送的请求都处理完毕后再阻塞（可以认为阻塞也是一种特殊的请求，
+也需要在消息队列中等待处理）。``SleepRendererFor`` 函数返回一个 ``Promise``
+对象，当渲染线程从阻塞状态退出并恢复正常工作时，该 promise 被 resolve.
+
+.. note::
+    如果阻塞期间主线程又对渲染线程发送了消息（异步函数调用），它们会在解除阻塞后被正确处理。
+    
+.. warning::
+    此函数仅用于测试等特殊目的，长时间阻塞渲染线程可能导致意料之外的错误。
+
+---------------------------
+追踪渲染线程上的消息传递
+---------------------------
+
+在 Cocoa 启动时添加 ``--gl-transfer-queue-profile``
+命令行选项可以生成对渲染线程消息队列的 profiling 报告，当 Cocoa 正常退出后，
+会在工作目录生成一个 ``transfer-profiling-PID.json`` 文件，以 JSON 格式保存了 profiling 结果。
+
+该文件遵循如下格式：
+
+.. code-block:: json
+    :linenos:
+
+    {
+        "samples": [ /* Something */ ],
+        "type": "GLAMOR Message Queue Profiling",
+        "version": [ 1, 0, 0 ]
+    }
+
+``samples`` 字段部分是一个对象数组，其中的每一个对象称为一个 Sample（样本），
+每个 Sample 就代表消息队列中的一次消息传递（一次异步函数调用或者一次信号量传递）。
+
+因此自然地，Sample 有两种类型，分别代表异步函数调用和信号量传递，如果该 Sample
+是一次异步函数调用，它具有如下格式：
+
+.. code-block:: json
+    :linenos:
+
+    {
+        "milestones": {
+            "ClientFeedback": 9735,
+            "ClientProcessed": 9732,
+            "ClientReceived": 123,
+            "HostConstruction": 107,
+            "HostEnqueued": 110,
+            "HostReceived": 9771
+        },
+        "opcode": 1,
+        "receiver": "0x7fc3ef64ebd0",
+        "receiverType": "RenderHostCreator",
+        "returnStatus": "OpSuccess",
+        "type": "Invocation"
+    }
+
+*milestones*
+    包含一系列时间戳，其数值表示自渲染线程启动开始到记录该时间戳所经历的微秒数。
+    各个时间戳的意义如下（按其发生的时间先后顺序排列）：
+
+    ==================== ==================================
+    STAMP                Meaning
+    ==================== ==================================
+    HostConstruction     RenderHost 构造消息对象
+    HostEnqueued         RenderHost 将消息推入消息队列
+    ClientReceived       RenderClient 从消息队列中取出消息
+    ClientProcessed      RenderClient 完成消息处理
+    ClientFeedback       RenderClient 将消息返回值推入消息队列
+    HostReceived         RenderHost 从消息队列中取出返回值
+    ==================== ==================================
+
+*opcode*
+    保存了该操作的操作码，可以理解为异步函数调用的函数名，
+    有关操作码的详细信息属于 Cocoa 原生层的内容，
+    读者可参见 Cocoa 源码中的 ``GLOP_*`` 系列宏定义。
+
+*receiver*
+    消息接收者（C++ 对象）的内存地址，用于调试目的。
+
+*receiverType*
+    消息接收者的类型（C++ 类型）。
+
+*returnStatus*
+    返回状态，有多种：
+
+    ================== =============================
+    Return Status      Meaning
+    ================== =============================
+    Pending            悬而未决的，即消息还没有被处理
+    OpCodeInvalid      无效的 opcode
+    ArgsInvalid        无效的参数
+    Caught             调用过程中有异常被抛出
+    OpSuccess          操作成功
+    OpFailed           操作失败
+    ================== =============================
+
+    不难理解，profiling 中不会出现 Pending 这种情况。
+
+*type*
+    对于异步函数调用，恒为 ``Invocation`` 。
+
+而对于信号量传递，Sample 具有如下格式：
+
+.. code-block:: json
+    :linenos:
+
+    {
+        "emitter": "0x7fc3d500a010",
+        "emitterType": "Display",
+        "milestones": {
+            "ClientEmitted": 7625976,
+            "HostReceived": 7626054
+        },
+        "signalCode": 1,
+        "type": "Signal"
+    }
+
+*emitter*
+    信号发出者（C++ 对象）的内存地址。
+
+*emitterType*
+    信号发出者的类型（C++ 类型）。
+
+*milestones*
+    含义与上文中描述的相同。
+
+*signalCode*
+    信号编号，有关信号编号的内容属于 Cocoa 原生层的内容，
+    读者可以参见 Glamor 源码中的 ``GLSI_*`` 系列宏定义。
+    在 JavaScript 中，如果一个对象可以使用 ``connect`` 方法来连接信号量，
+    那么可以调用它的 ``inspectObject`` 方法来获得在该对象上的信号编号到信号名称的映射关系
+    （见下一小节）。
+
+*type*
+    对于信号量传递，恒为 ``Signal``。
+
+---------------------------------------------------
+使用 ``inspectObject`` 方法检索可异步调用的对象
+---------------------------------------------------
+
+如果一个来自 Glamor 的 JavaScript 对象具有 ``connect`` 和 ``disconnect``
+方法（即它们继承于 ``RenderClientObject`` 对象），就可以调用这些对象上的
+``inspectObject`` 方法来获得有关此异步对象的信息。
+
+该方法返回一个具有如下格式的 JavaScript 对象：
+
+.. code-block:: javascript
+    :linenos:
+
+    {
+        objectType: "SomeType",
+        signals: [
+            {
+                name: "SignalName",
+                code: 1,
+                connectedCallbacks: [ /* Functions */ ]
+            }
+        ]
+    }
+
+``objectType`` 给出的类型名与 profiling 中 ``emitterType`` 和 ``receiverType``
+给出的类型名是一致的。同时也可以看到一个信号量的编号与名称之间的映射关系。
+
+.. note::
+    尽管 ``objectType`` 给出了一个类型名称，但该名称并不稳定，随着 Cocoa 版本的迭代更新，
+    这些类型名称在未来很可能会变化。

@@ -54,13 +54,16 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="rdrfw_overview.html">1. 渲染框架概览</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">2. Glamor 异步渲染模型</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#overview">2.1. Overview</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#asynchronous-operations">2.2. 异步操作（Asynchronous Operations）</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id1">2.1. 概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id2">2.2. 理解异步函数调用和信号槽</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#concepts">2.2.1. Concepts</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id1">2.2.2. 原生层实现</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id2">2.2.3. 理解异步函数调用和信号槽</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">2.2.2. 原生层实现</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#javascript">2.2.3. JavaScript 中的异步调用和信号槽</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="#api">2.3. 渲染线程控制相关 API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id4">2.4. 追踪渲染线程上的消息传递</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#inspectobject">2.5. 使用 <code class="docutils literal notranslate"><span class="pre">inspectObject</span></code> 方法检索可异步调用的对象</a></li>
 </ul>
 </li>
 </ul>
@@ -91,32 +94,34 @@
              
   <section id="glamor">
 <h1><span class="section-number">2. </span>Glamor 异步渲染模型<a class="headerlink" href="#glamor" title="此标题的永久链接"></a></h1>
-<section id="overview">
-<h2><span class="section-number">2.1. </span>Overview<a class="headerlink" href="#overview" title="此标题的永久链接"></a></h2>
+<section id="id1">
+<h2><span class="section-number">2.1. </span>概览<a class="headerlink" href="#id1" title="此标题的永久链接"></a></h2>
 <p>Cocoa 是一个多线程程序，除了由 libuv 启动的线程池外，Cocoa 中最为重要的线程可能就是
 <em>渲染线程（Rendering Thread）</em> 了。
 渲染线程负责了所有图形资源的获取、管理和释放，并实现了一系列异步渲染 API 和信号槽机制。
 在 Cocoa 中，一切渲染相关的任务都由渲染线程异步执行，主线程无须等待渲染过程结束，同时，
 所有用户输入事件都由渲染线程处理，并以信号量（并非 POSIX 中定义的信号量）的形式通知主线程。</p>
-<p>总而言之，渲染线程实现了两个功能，异步渲染 API 和图形资源管理，
-接下来我们将从这两方面来介绍渲染线程。</p>
+<p>总而言之，渲染线程实现了两个功能，异步渲染 API 和图形资源管理。</p>
 </section>
-<section id="asynchronous-operations">
-<h2><span class="section-number">2.2. </span>异步操作（Asynchronous Operations）<a class="headerlink" href="#asynchronous-operations" title="此标题的永久链接"></a></h2>
+<section id="id2">
+<h2><span class="section-number">2.2. </span>理解异步函数调用和信号槽<a class="headerlink" href="#id2" title="此标题的永久链接"></a></h2>
 <section id="concepts">
 <h3><span class="section-number">2.2.1. </span>Concepts<a class="headerlink" href="#concepts" title="此标题的永久链接"></a></h3>
 <p>我们首先介绍一些概念，在后文中会使用到：</p>
-<ul class="simple">
-<li><p>操作（Operation）: 指由主线程发起的函数调用，该调用并不会立刻执行，而是被提交到消息队列中，
-在合适的时候会被渲染线程执行。操作的执行结果也会放回消息队列中，在合适的时候被主线程读取。</p></li>
-<li><p>信号（Signal）和槽（Slot）: 操作是由主线程主动发起的函数调用，而信号则是由渲染线程发起的一种通知机制。
+<dl class="simple">
+<dt><em>操作（Operation）</em></dt><dd><p>指由主线程发起的函数调用，该调用并不会立刻执行，而是被提交到消息队列中，
+在合适的时候会被渲染线程执行。操作的执行结果也会放回消息队列中，在合适的时候被主线程读取。</p>
+</dd>
+<dt><em>信号（Signal）和槽（Slot）</em></dt><dd><p>操作是由主线程主动发起的函数调用，而信号则是由渲染线程发起的一种通知机制。
 函数对象可以连接（Connect）到一个信号上，这些函数就称为槽。当一个信号被发出（Emit）时，
-所有连接到该信号的槽都会被调用，顺序不作保证，我们仅保证槽会在信号被接受的那个线程上被调用（通常是主线程）。</p></li>
-<li><p>RenderHost: 主线程的一方称为 <strong>RenderHost</strong> ，相对应的，渲染线程的一方称为 <strong>RenderClient</strong> 。</p></li>
-</ul>
+所有连接到该信号的槽都会被调用，顺序不作保证，我们仅保证槽会在信号被接受的那个线程上被调用（通常是主线程）。</p>
+</dd>
+<dt><em>RenderHost</em></dt><dd><p>主线程的一方称为 <strong>RenderHost</strong> ，相对应的，渲染线程的一方称为 <strong>RenderClient</strong>.</p>
+</dd>
+</dl>
 </section>
-<section id="id1">
-<h3><span class="section-number">2.2.2. </span>原生层实现<a class="headerlink" href="#id1" title="此标题的永久链接"></a></h3>
+<section id="id3">
+<h3><span class="section-number">2.2.2. </span>原生层实现<a class="headerlink" href="#id3" title="此标题的永久链接"></a></h3>
 <div class="admonition note">
 <p class="admonition-title">备注</p>
 <p>没有 C++ 经验和多线程开发经验的读者可以跳过此部分，不影响后续的阅读。</p>
@@ -143,8 +148,8 @@
 <p>对于信号量，将从 <code class="docutils literal notranslate"><span class="pre">RenderClientTransfer</span></code> 中解出数据，转移到 <code class="docutils literal notranslate"><span class="pre">RenderHostSlotCallbackInfo</span></code> 中，
 该对象将直接被传递给用户注册的槽函数。</p>
 </section>
-<section id="id2">
-<h3><span class="section-number">2.2.3. </span>理解异步函数调用和信号槽<a class="headerlink" href="#id2" title="此标题的永久链接"></a></h3>
+<section id="javascript">
+<h3><span class="section-number">2.2.3. </span>JavaScript 中的异步调用和信号槽<a class="headerlink" href="#javascript" title="此标题的永久链接"></a></h3>
 <p>在异步函数调用和信号槽这两大异步机制中，有两个主要角色：RenderHost 和 RenderClient，
 RenderHost 是对主线程（JavaScript 线程）的抽象，而 RenderClient 则是对渲染线程的抽象。</p>
 <p>RenderHost 可以对 RenderClient 发起函数调用，但是该函数调用并不实际在 RenderHost 上执行，
@@ -195,6 +200,208 @@ RenderHost 是对主线程（JavaScript 线程）的抽象，而 RenderClient �
 用户不应当假设任何槽函数被调用的顺序。</p>
 </div>
 </section>
+</section>
+<section id="api">
+<h2><span class="section-number">2.3. </span>渲染线程控制相关 API<a class="headerlink" href="#api" title="此标题的永久链接"></a></h2>
+<div class="admonition note">
+<p class="admonition-title">备注</p>
+<p>关于 API 的详细信息，读者参见 API 文档。本文档不会详细介绍每个 API。
+此处介绍一些 API 是为了说明它们应该如何、在何时被使用。</p>
+</div>
+<p>在 <code class="docutils literal notranslate"><span class="pre">RenderHost</span></code> 对象上有数个静态方法，用于控制渲染线程的行为和线程间同步。</p>
+<p>使用 <code class="docutils literal notranslate"><span class="pre">WaitForSyncBarrier</span></code> 方法可以使当前线程阻塞，直到渲染线程将目前为止所有的消息处理完毕。
+该函数引发的阻塞是真正意义上的阻塞，而不是在事件循环中等待，整个 JavaScript 线程会被暂停
+（如果当前 JavaScript 运行时连接到了 Inspector，则 Inspector 也会暂停响应），
+直到渲染线程清空消息队列或达到最大等待时间。</p>
+<div class="admonition note">
+<p class="admonition-title">备注</p>
+<p>如果阻塞期间有来自渲染线程的信号量，它们会在解除阻塞后被处理，且严格按照信号被发送的顺序处理。</p>
+</div>
+<p>该方法用于显式地等待渲染线程完成先前提交的所有请求，若渲染线程被大量的请求占用，
+调用该方法可以暂停主线程来缓解渲染线程的压力。在一些调试情景下，该函数也十分有用。</p>
+<p>另一个需要介绍的方法是 <code class="docutils literal notranslate"><span class="pre">SleepRendererFor</span></code> ，该函数可以使渲染线程阻塞一定的时间，
+用以模拟渲染线程暂时失去响应的状态。需要注意的是，该函数并不会立刻使渲染线程阻塞，
+而是等待先前发送的请求都处理完毕后再阻塞（可以认为阻塞也是一种特殊的请求，
+也需要在消息队列中等待处理）。<code class="docutils literal notranslate"><span class="pre">SleepRendererFor</span></code> 函数返回一个 <code class="docutils literal notranslate"><span class="pre">Promise</span></code>
+对象，当渲染线程从阻塞状态退出并恢复正常工作时，该 promise 被 resolve.</p>
+<div class="admonition note">
+<p class="admonition-title">备注</p>
+<p>如果阻塞期间主线程又对渲染线程发送了消息（异步函数调用），它们会在解除阻塞后被正确处理。</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">警告</p>
+<p>此函数仅用于测试等特殊目的，长时间阻塞渲染线程可能导致意料之外的错误。</p>
+</div>
+</section>
+<section id="id4">
+<h2><span class="section-number">2.4. </span>追踪渲染线程上的消息传递<a class="headerlink" href="#id4" title="此标题的永久链接"></a></h2>
+<p>在 Cocoa 启动时添加 <code class="docutils literal notranslate"><span class="pre">--gl-transfer-queue-profile</span></code>
+命令行选项可以生成对渲染线程消息队列的 profiling 报告，当 Cocoa 正常退出后，
+会在工作目录生成一个 <code class="docutils literal notranslate"><span class="pre">transfer-profiling-PID.json</span></code> 文件，以 JSON 格式保存了 profiling 结果。</p>
+<p>该文件遵循如下格式：</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="linenos">1</span><span class="p">{</span><span class="w"></span>
+<span class="linenos">2</span><span class="w">    </span><span class="nt">&quot;samples&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="cm">/* Something */</span><span class="w"> </span><span class="p">],</span><span class="w"></span>
+<span class="linenos">3</span><span class="w">    </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;GLAMOR Message Queue Profiling&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">4</span><span class="w">    </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">]</span><span class="w"></span>
+<span class="linenos">5</span><span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">samples</span></code> 字段部分是一个对象数组，其中的每一个对象称为一个 Sample（样本），
+每个 Sample 就代表消息队列中的一次消息传递（一次异步函数调用或者一次信号量传递）。</p>
+<p>因此自然地，Sample 有两种类型，分别代表异步函数调用和信号量传递，如果该 Sample
+是一次异步函数调用，它具有如下格式：</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="p">{</span><span class="w"></span>
+<span class="linenos"> 2</span><span class="w">    </span><span class="nt">&quot;milestones&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="linenos"> 3</span><span class="w">        </span><span class="nt">&quot;ClientFeedback&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">9735</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 4</span><span class="w">        </span><span class="nt">&quot;ClientProcessed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">9732</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 5</span><span class="w">        </span><span class="nt">&quot;ClientReceived&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">123</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 6</span><span class="w">        </span><span class="nt">&quot;HostConstruction&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">107</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 7</span><span class="w">        </span><span class="nt">&quot;HostEnqueued&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">110</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 8</span><span class="w">        </span><span class="nt">&quot;HostReceived&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">9771</span><span class="w"></span>
+<span class="linenos"> 9</span><span class="w">    </span><span class="p">},</span><span class="w"></span>
+<span class="linenos">10</span><span class="w">    </span><span class="nt">&quot;opcode&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">11</span><span class="w">    </span><span class="nt">&quot;receiver&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0x7fc3ef64ebd0&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">12</span><span class="w">    </span><span class="nt">&quot;receiverType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;RenderHostCreator&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">13</span><span class="w">    </span><span class="nt">&quot;returnStatus&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;OpSuccess&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">14</span><span class="w">    </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Invocation&quot;</span><span class="w"></span>
+<span class="linenos">15</span><span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+<dl>
+<dt><em>milestones</em></dt><dd><p>包含一系列时间戳，其数值表示自渲染线程启动开始到记录该时间戳所经历的微秒数。
+各个时间戳的意义如下（按其发生的时间先后顺序排列）：</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 35%" />
+<col style="width: 65%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>STAMP</p></th>
+<th class="head"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>HostConstruction</p></td>
+<td><p>RenderHost 构造消息对象</p></td>
+</tr>
+<tr class="row-odd"><td><p>HostEnqueued</p></td>
+<td><p>RenderHost 将消息推入消息队列</p></td>
+</tr>
+<tr class="row-even"><td><p>ClientReceived</p></td>
+<td><p>RenderClient 从消息队列中取出消息</p></td>
+</tr>
+<tr class="row-odd"><td><p>ClientProcessed</p></td>
+<td><p>RenderClient 完成消息处理</p></td>
+</tr>
+<tr class="row-even"><td><p>ClientFeedback</p></td>
+<td><p>RenderClient 将消息返回值推入消息队列</p></td>
+</tr>
+<tr class="row-odd"><td><p>HostReceived</p></td>
+<td><p>RenderHost 从消息队列中取出返回值</p></td>
+</tr>
+</tbody>
+</table>
+</dd>
+<dt><em>opcode</em></dt><dd><p>保存了该操作的操作码，可以理解为异步函数调用的函数名，
+有关操作码的详细信息属于 Cocoa 原生层的内容，
+读者可参见 Cocoa 源码中的 <code class="docutils literal notranslate"><span class="pre">GLOP_*</span></code> 系列宏定义。</p>
+</dd>
+<dt><em>receiver</em></dt><dd><p>消息接收者（C++ 对象）的内存地址，用于调试目的。</p>
+</dd>
+<dt><em>receiverType</em></dt><dd><p>消息接收者的类型（C++ 类型）。</p>
+</dd>
+<dt><em>returnStatus</em></dt><dd><p>返回状态，有多种：</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 38%" />
+<col style="width: 63%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Return Status</p></th>
+<th class="head"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Pending</p></td>
+<td><p>悬而未决的，即消息还没有被处理</p></td>
+</tr>
+<tr class="row-odd"><td><p>OpCodeInvalid</p></td>
+<td><p>无效的 opcode</p></td>
+</tr>
+<tr class="row-even"><td><p>ArgsInvalid</p></td>
+<td><p>无效的参数</p></td>
+</tr>
+<tr class="row-odd"><td><p>Caught</p></td>
+<td><p>调用过程中有异常被抛出</p></td>
+</tr>
+<tr class="row-even"><td><p>OpSuccess</p></td>
+<td><p>操作成功</p></td>
+</tr>
+<tr class="row-odd"><td><p>OpFailed</p></td>
+<td><p>操作失败</p></td>
+</tr>
+</tbody>
+</table>
+<p>不难理解，profiling 中不会出现 Pending 这种情况。</p>
+</dd>
+<dt><em>type</em></dt><dd><p>对于异步函数调用，恒为 <code class="docutils literal notranslate"><span class="pre">Invocation</span></code> 。</p>
+</dd>
+</dl>
+<p>而对于信号量传递，Sample 具有如下格式：</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="p">{</span><span class="w"></span>
+<span class="linenos"> 2</span><span class="w">    </span><span class="nt">&quot;emitter&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0x7fc3d500a010&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 3</span><span class="w">    </span><span class="nt">&quot;emitterType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Display&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 4</span><span class="w">    </span><span class="nt">&quot;milestones&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="linenos"> 5</span><span class="w">        </span><span class="nt">&quot;ClientEmitted&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">7625976</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 6</span><span class="w">        </span><span class="nt">&quot;HostReceived&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">7626054</span><span class="w"></span>
+<span class="linenos"> 7</span><span class="w">    </span><span class="p">},</span><span class="w"></span>
+<span class="linenos"> 8</span><span class="w">    </span><span class="nt">&quot;signalCode&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 9</span><span class="w">    </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Signal&quot;</span><span class="w"></span>
+<span class="linenos">10</span><span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+<dl class="simple">
+<dt><em>emitter</em></dt><dd><p>信号发出者（C++ 对象）的内存地址。</p>
+</dd>
+<dt><em>emitterType</em></dt><dd><p>信号发出者的类型（C++ 类型）。</p>
+</dd>
+<dt><em>milestones</em></dt><dd><p>含义与上文中描述的相同。</p>
+</dd>
+<dt><em>signalCode</em></dt><dd><p>信号编号，有关信号编号的内容属于 Cocoa 原生层的内容，
+读者可以参见 Glamor 源码中的 <code class="docutils literal notranslate"><span class="pre">GLSI_*</span></code> 系列宏定义。
+在 JavaScript 中，如果一个对象可以使用 <code class="docutils literal notranslate"><span class="pre">connect</span></code> 方法来连接信号量，
+那么可以调用它的 <code class="docutils literal notranslate"><span class="pre">inspectObject</span></code> 方法来获得在该对象上的信号编号到信号名称的映射关系
+（见下一小节）。</p>
+</dd>
+<dt><em>type</em></dt><dd><p>对于信号量传递，恒为 <code class="docutils literal notranslate"><span class="pre">Signal</span></code>。</p>
+</dd>
+</dl>
+</section>
+<section id="inspectobject">
+<h2><span class="section-number">2.5. </span>使用 <code class="docutils literal notranslate"><span class="pre">inspectObject</span></code> 方法检索可异步调用的对象<a class="headerlink" href="#inspectobject" title="此标题的永久链接"></a></h2>
+<p>如果一个来自 Glamor 的 JavaScript 对象具有 <code class="docutils literal notranslate"><span class="pre">connect</span></code> 和 <code class="docutils literal notranslate"><span class="pre">disconnect</span></code>
+方法（即它们继承于 <code class="docutils literal notranslate"><span class="pre">RenderClientObject</span></code> 对象），就可以调用这些对象上的
+<code class="docutils literal notranslate"><span class="pre">inspectObject</span></code> 方法来获得有关此异步对象的信息。</p>
+<p>该方法返回一个具有如下格式的 JavaScript 对象：</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="p">{</span><span class="w"></span>
+<span class="linenos"> 2</span><span class="w">    </span><span class="nx">objectType</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;SomeType&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 3</span><span class="w">    </span><span class="nx">signals</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="w"></span>
+<span class="linenos"> 4</span><span class="w">        </span><span class="p">{</span><span class="w"></span>
+<span class="linenos"> 5</span><span class="w">            </span><span class="nx">name</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;SignalName&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 6</span><span class="w">            </span><span class="nx">code</span><span class="o">:</span><span class="w"> </span><span class="mf">1</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 7</span><span class="w">            </span><span class="nx">connectedCallbacks</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="cm">/* Functions */</span><span class="w"> </span><span class="p">]</span><span class="w"></span>
+<span class="linenos"> 8</span><span class="w">        </span><span class="p">}</span><span class="w"></span>
+<span class="linenos"> 9</span><span class="w">    </span><span class="p">]</span><span class="w"></span>
+<span class="linenos">10</span><span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">objectType</span></code> 给出的类型名与 profiling 中 <code class="docutils literal notranslate"><span class="pre">emitterType</span></code> 和 <code class="docutils literal notranslate"><span class="pre">receiverType</span></code>
+给出的类型名是一致的。同时也可以看到一个信号量的编号与名称之间的映射关系。</p>
+<div class="admonition note">
+<p class="admonition-title">备注</p>
+<p>尽管 <code class="docutils literal notranslate"><span class="pre">objectType</span></code> 给出了一个类型名称，但该名称并不稳定，随着 Cocoa 版本的迭代更新，
+这些类型名称在未来很可能会变化。</p>
+</div>
 </section>
 </section>
 
