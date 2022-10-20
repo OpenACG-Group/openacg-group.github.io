@@ -27,4 +27,6 @@ Cocoa 用户文档
    :numbered:
 
    rdrfw_overview
+   rdrfw_canvaskit_rendering_api
    rdrfw_async_rendering_model
+   rdrfw_platform_abstraction

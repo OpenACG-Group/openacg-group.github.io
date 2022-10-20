@@ -292,7 +292,7 @@ RenderHost 可以对 RenderClient 发起函数调用，但是该函数调用并�
     对于信号量传递，恒为 ``Signal``。
 
 ---------------------------------------------------
-使用 ``inspectObject`` 方法检索可异步调用的对象
+可异步调用对象上的 ``inspectObject`` 方法
 ---------------------------------------------------
 
 如果一个来自 Glamor 的 JavaScript 对象具有 ``connect`` 和 ``disconnect``
@@ -321,3 +321,31 @@ RenderHost 可以对 RenderClient 发起函数调用，但是该函数调用并�
 .. note::
     尽管 ``objectType`` 给出了一个类型名称，但该名称并不稳定，随着 Cocoa 版本的迭代更新，
     这些类型名称在未来很可能会变化。
+
+--------------------
+线程池中的异步任务
+--------------------
+
+Glamor 中并非所有的异步任务都由渲染线程执行，一些涉及到文件读写的操作也是异步的，
+但是它们可能交由线程池完成，例如 ``CkImage.MakeFromEncodedFile`` 方法，
+这可能有助于用户利用线程池可并行的特性改善性能。例如，对于 ``CkImage.MakeFromEncodedFile``
+方法，用户如果需要在短时间内从文件系统中加载并解码大量图片，
+就可以利用其在线程池中执行的特性来并行加载：
+
+.. code-block:: javascript
+    :linenos:
+
+    const imageFiles = [ /* many image files */ ];
+    const promises = [];
+    for (const file of imageFiles) {
+        promises.push(GL.CkImage.MakeFromEncodedFile(file));
+    }
+    Promise.all(promises).then((images) => {
+        std.print("Images has been loaded successfully\n");
+    });
+
+经过测试，从文件系统中加载 300 张大小不一的图片，使用逐个串行加载的方式，平均耗时 2100ms；
+而采用上述并行加载的方式（8 核 CPU，4 个工作线程），可以将耗时显著减小到 560ms.
+
+无论如何，异步操作由哪一个线程完成对于用户来说是透明的，
+Cocoa 总是保证这些异步操作会按照约定返回正确的结果，且不会出现冲突。

@@ -1,0 +1,147 @@
+===========================
+CanvasKit 绘图 API
+===========================
+
+CanvasKit 是 Google 的 Skia 项目的一部分，旨在为 JavaScript 提供一个完备的 2D 绘图 API。
+Cocoa 也引入了 CanvasKit 来作为标准 2D 绘图的 API。
+
+有关于 CanvasKit 本身的使用方法，读者可参见 `Skia 文档 <https://skia.org>`_ ，这里不再赘述。
+本节仅仅介绍 CanvasKit 在 Cocoa 中的导入和使用。
+
+------------------
+矢量图的光栅化
+------------------
+
+CanvasKit 是一套矢量绘图 API，其绘制流程可以粗略地分为两步：绘制和光栅化。
+光栅化可以由 CanvasKit 本身来完成，也可以由 Glamor 来完成，前者仅仅支持软件光栅化
+（没有 GPU 加速），且光栅化结果不能作为内容在屏幕上显示，只能得到像素图
+（用户也可以将其保存为 JPG, PNG 等格式的图片），而后者支持 GPU 光栅化，
+且专为需要显示到屏幕上的内容而设计。
+另外，Glamor 光栅化也支持基于图层树的渲染，这一点我们将在后面的内容中重点介绍。
+
+在这一节中，我们仅仅介绍如何仅仅使用 CanvasKit 来绘图和光栅化。
+也就是说，我们不会创建任何窗口，所有的绘制结果都作为图像文件保存到文件系统上。
+
+-----------------
+导入 CanvasKit
+-----------------
+
+CanvasKit 已经作为内建模块包含在 Cocoa 中，可以使用如下语句导入：
+
+.. code-block:: javascript
+    :linenos:
+    
+    // 我们推荐使用这种导入方式，以便于配合使用 TypeScript 的类型声明.
+    // CanvasKit 的 .d.ts 文件位于 Cocoa 项目的 //typescript/internal/canvaskit.d.ts
+    import * as CanvasKit from 'internal://canvaskit';
+
+.. note::
+    初次导入 CanvasKit 可能是一个比较耗时的操作，因为 V8 会解析和编译 WebAssembly 代码，
+    我们计划在未来的 Cocoa 版本中改善这个问题。
+
+然后，在导入的 ``CanvasKit`` 对象中，包含了一个 ``canvaskit`` 属性，这是一个 CanvasKit
+实例，通过它来访问所有的 CanvasKit 对象，为了简便起见，可以为该字段定义一个全局的别名：
+
+.. code-block:: javascript
+    :linenos:
+
+    // 如果使用 TypeScript，TS 编译器可以自动推导出 canvaskit 的类型，
+    // 进而在编辑器（如 vscode）中提供自动补全建议.
+    const canvaskit = CanvasKit.canvaskit;
+
+    // 或者，若是使用纯 JavaScript，也可以直接以如下方式导入：
+    import {canvaskit} from 'internal://canvaskit';
+
+于是，我们可以通过 ``canvaskit`` 对象访问 CanvasKit 的所有对象，例如，创建一个路径对象：
+
+.. code-block:: javascript
+    :linenos:
+
+    // 如果使用 TypeScript，path 对象具有类型 CanvasKit.Path，
+    // CanvasKit 中的其它对象也同理.
+    const path = new canvaskit.Path();
+
+下面这个例子配合了 TypeScript 类型声明：
+
+.. code-block:: typescript
+    :linenos:
+
+    // 绘制一个星形路径
+    // 来自 Skia 官方示例 https://fiddle.skia.org/c/@shader 中的代码片段.
+    function star(): CanvasKit.Path {
+        const R = 60.0, C = 128.0;
+        const path = new canvaskit.Path();
+        path.moveTo(C + R, C);
+        for (const i = 0; i < 15; i++) {
+            const a = 0.44879895 * i;
+            const r = R + R * (i % 2);
+            path.lineTo(C + r * Math.cos(a), C + r * Math.sin(a));
+        }
+        return path;
+    }
+
+.. warning::
+    由于 WebAssembly 的内存不受 JavaScript 的 GC 机制的控制，
+    因此任何在 CanvasKit 中使用 ``new`` 或者 ``Make*`` 系列函数创建的 JavaScript 对象，
+    都必须使用 ``delete`` 方法手动释放其内存 ，否则 Cocoa 会因为内存耗尽而异常退出。
+
+---------------
+简单绘图实例
+---------------
+
+使用 ``MakeSurface`` 函数可以创建一个具有 CPU 光栅化能力的绘图表面（Surface），
+然后可以获得在该表面上的 ``Canvas`` 对象来进行绘图。
+创建的 Surface 使用 SRGB 色彩空间，未预乘 alpha 的 8888 颜色格式（像素内存对于 JavaScript
+而言是不可访问的）。
+
+.. code-block:: javascript
+    :linenos:
+
+    import * as std from 'core';
+    import {canvaskit} from 'internal://canvaskit';
+
+    // 宽 256 像素，高 256 像素的绘图表面
+    const surface = canvaskit.MakeSurface(256, 256);
+    if (!surface) {
+        throw Error('Failed to create a surface');
+    }
+
+    const canvas = surface.getCanvas();
+
+    // 在此处使用 canvas 对象进行绘图
+    // ...
+
+    // 将当前 Surface 内容保存为 Image 对象，该对象独立于 Surface 存在，
+    // 也需要手动 delete
+    const snapshot = surface.makeImageSnapshot();
+
+    // 将 Image 对象编码（默认为 PNG），转换为 Buffer 对象，
+    // 使用 MakeFromAdoptBuffer 来避免不必要的内存拷贝
+    const buffer = std.Buffer.MakeFromAdoptBuffer(snapshot.encodeToBytes());
+
+    // 释放内存
+    snapshot.delete();
+    surface.delete();
+
+    // 将该 Buffer 对象写入文件系统
+    std.File.WriteFileSync('./output.png', buffer);
+
+    // 或使用异步方式以获得更为精细的控制
+    std.File.Open('./output.png', std.File.O_RDWR | std.File.O_CREAT, 0o644).then((file) => {
+        return file.write(buffer, 0, buffer.length, 0);
+    }).then(() => {
+        std.print("Done!\n");
+    }).catch((error) => {
+        std.print("Failed to save image file\n");
+    });
+
+上面所演示的绘图方式可以在不创建窗口的情况下进行绘图，其结果是一张像素图。
+这一绘图流程全部使用 CPU 进行光栅化，且光栅化代码是通过 WebAssembly 执行的，
+因此性能并不理想，但这一机制仍然十分适合在运行时动态地产生一些纹理对象
+（CanvasKit 中的 ``Image`` 和 ``Bitmap`` 对象可以很容易地转换为 Glamor 中的 ``CkImage`` 和 ``CkBitmap``
+对象，进而转换为由 Glamor 管理的纹理对象，这在后面的小节中将会介绍），
+尤其是在目前 Glamor 还不支持离屏（Offscreen）渲染的情况下。
+
+----------------------------
+利用 Picture 处理绘图指令
+----------------------------

@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="zh-CN" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>2. CanvasKit 绘图 API &mdash; Cocoa  文档</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+      <link rel="stylesheet" href="_static/styles.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/sphinx_highlight.js"></script>
+        <script src="_static/translations.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="索引" href="genindex.html" />
+    <link rel="search" title="搜索" href="search.html" />
+    <link rel="next" title="3. Glamor 异步渲染模型" href="rdrfw_async_rendering_model.html" />
+    <link rel="prev" title="1. 渲染框架概览" href="rdrfw_overview.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> Cocoa
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="在文档中搜索" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="intro_introduction.html">1. Cocoa 项目简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intro_about_this.html">2. About（关于）</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">JavaScript Runtime Environment</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="jsrt_es_module.html">1. ECMAScript 模块</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Rendering Framework</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="rdrfw_overview.html">1. 渲染框架概览</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">2. CanvasKit 绘图 API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id1">2.1. 矢量图的光栅化</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#canvaskit">2.2. 导入 CanvasKit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id2">2.3. 简单绘图实例</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#picture">2.4. 利用 Picture 处理绘图指令</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="rdrfw_async_rendering_model.html">3. Glamor 异步渲染模型</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rdrfw_platform_abstraction.html">4. 窗口系统与平台抽象</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Cocoa</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li><span class="section-number">2. </span>CanvasKit 绘图 API</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/rdrfw_canvaskit_rendering_api.rst.txt" rel="nofollow"> 查看页面源码</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="canvaskit-api">
+<h1><span class="section-number">2. </span>CanvasKit 绘图 API<a class="headerlink" href="#canvaskit-api" title="此标题的永久链接"></a></h1>
+<p>CanvasKit 是 Google 的 Skia 项目的一部分，旨在为 JavaScript 提供一个完备的 2D 绘图 API。
+Cocoa 也引入了 CanvasKit 来作为标准 2D 绘图的 API。</p>
+<p>有关于 CanvasKit 本身的使用方法，读者可参见 <a class="reference external" href="https://skia.org">Skia 文档</a> ，这里不再赘述。
+本节仅仅介绍 CanvasKit 在 Cocoa 中的导入和使用。</p>
+<section id="id1">
+<h2><span class="section-number">2.1. </span>矢量图的光栅化<a class="headerlink" href="#id1" title="此标题的永久链接"></a></h2>
+<p>CanvasKit 是一套矢量绘图 API，其绘制流程可以粗略地分为两步：绘制和光栅化。
+光栅化可以由 CanvasKit 本身来完成，也可以由 Glamor 来完成，前者仅仅支持软件光栅化
+（没有 GPU 加速），且光栅化结果不能作为内容在屏幕上显示，只能得到像素图
+（用户也可以将其保存为 JPG, PNG 等格式的图片），而后者支持 GPU 光栅化，
+且专为需要显示到屏幕上的内容而设计。
+另外，Glamor 光栅化也支持基于图层树的渲染，这一点我们将在后面的内容中重点介绍。</p>
+<p>在这一节中，我们仅仅介绍如何仅仅使用 CanvasKit 来绘图和光栅化。
+也就是说，我们不会创建任何窗口，所有的绘制结果都作为图像文件保存到文件系统上。</p>
+</section>
+<section id="canvaskit">
+<h2><span class="section-number">2.2. </span>导入 CanvasKit<a class="headerlink" href="#canvaskit" title="此标题的永久链接"></a></h2>
+<p>CanvasKit 已经作为内建模块包含在 Cocoa 中，可以使用如下语句导入：</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="linenos">1</span><span class="c1">// 我们推荐使用这种导入方式，以便于配合使用 TypeScript 的类型声明.</span><span class="w"></span>
+<span class="linenos">2</span><span class="c1">// CanvasKit 的 .d.ts 文件位于 Cocoa 项目的 //typescript/internal/canvaskit.d.ts</span><span class="w"></span>
+<span class="linenos">3</span><span class="k">import</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">CanvasKit</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;internal://canvaskit&#39;</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">备注</p>
+<p>初次导入 CanvasKit 可能是一个比较耗时的操作，因为 V8 会解析和编译 WebAssembly 代码，
+我们计划在未来的 Cocoa 版本中改善这个问题。</p>
+</div>
+<p>然后，在导入的 <code class="docutils literal notranslate"><span class="pre">CanvasKit</span></code> 对象中，包含了一个 <code class="docutils literal notranslate"><span class="pre">canvaskit</span></code> 属性，这是一个 CanvasKit
+实例，通过它来访问所有的 CanvasKit 对象，为了简便起见，可以为该字段定义一个全局的别名：</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="linenos">1</span><span class="c1">// 如果使用 TypeScript，TS 编译器可以自动推导出 canvaskit 的类型，</span><span class="w"></span>
+<span class="linenos">2</span><span class="c1">// 进而在编辑器（如 vscode）中提供自动补全建议.</span><span class="w"></span>
+<span class="linenos">3</span><span class="kd">const</span><span class="w"> </span><span class="nx">canvaskit</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">CanvasKit</span><span class="p">.</span><span class="nx">canvaskit</span><span class="p">;</span><span class="w"></span>
+<span class="linenos">4</span>
+<span class="linenos">5</span><span class="c1">// 或者，若是使用纯 JavaScript，也可以直接以如下方式导入：</span><span class="w"></span>
+<span class="linenos">6</span><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="nx">canvaskit</span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;internal://canvaskit&#39;</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<p>于是，我们可以通过 <code class="docutils literal notranslate"><span class="pre">canvaskit</span></code> 对象访问 CanvasKit 的所有对象，例如，创建一个路径对象：</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="linenos">1</span><span class="c1">// 如果使用 TypeScript，path 对象具有类型 CanvasKit.Path，</span><span class="w"></span>
+<span class="linenos">2</span><span class="c1">// CanvasKit 中的其它对象也同理.</span><span class="w"></span>
+<span class="linenos">3</span><span class="kd">const</span><span class="w"> </span><span class="nx">path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">canvaskit</span><span class="p">.</span><span class="nx">Path</span><span class="p">();</span><span class="w"></span>
+</pre></div>
+</div>
+<p>下面这个例子配合了 TypeScript 类型声明：</p>
+<div class="highlight-typescript notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="c1">// 绘制一个星形路径</span><span class="w"></span>
+<span class="linenos"> 2</span><span class="c1">// 来自 Skia 官方示例 https://fiddle.skia.org/c/@shader 中的代码片段.</span><span class="w"></span>
+<span class="linenos"> 3</span><span class="kd">function</span><span class="w"> </span><span class="nx">star</span><span class="p">()</span><span class="o">:</span><span class="w"> </span><span class="nx">CanvasKit</span><span class="p">.</span><span class="nx">Path</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="linenos"> 4</span><span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">R</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">60.0</span><span class="p">,</span><span class="w"> </span><span class="nx">C</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">128.0</span><span class="p">;</span><span class="w"></span>
+<span class="linenos"> 5</span><span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">canvaskit</span><span class="p">.</span><span class="nx">Path</span><span class="p">();</span><span class="w"></span>
+<span class="linenos"> 6</span><span class="w">    </span><span class="nx">path</span><span class="p">.</span><span class="nx">moveTo</span><span class="p">(</span><span class="nx">C</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">R</span><span class="p">,</span><span class="w"> </span><span class="nx">C</span><span class="p">);</span><span class="w"></span>
+<span class="linenos"> 7</span><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kd">const</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0</span><span class="p">;</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mf">15</span><span class="p">;</span><span class="w"> </span><span class="nx">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="linenos"> 8</span><span class="w">        </span><span class="kd">const</span><span class="w"> </span><span class="nx">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.44879895</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="nx">i</span><span class="p">;</span><span class="w"></span>
+<span class="linenos"> 9</span><span class="w">        </span><span class="kd">const</span><span class="w"> </span><span class="nx">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">R</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">R</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="nx">i</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="mf">2</span><span class="p">);</span><span class="w"></span>
+<span class="linenos">10</span><span class="w">        </span><span class="nx">path</span><span class="p">.</span><span class="nx">lineTo</span><span class="p">(</span><span class="nx">C</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">r</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="nb">Math</span><span class="p">.</span><span class="nx">cos</span><span class="p">(</span><span class="nx">a</span><span class="p">),</span><span class="w"> </span><span class="nx">C</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">r</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="nb">Math</span><span class="p">.</span><span class="nx">sin</span><span class="p">(</span><span class="nx">a</span><span class="p">));</span><span class="w"></span>
+<span class="linenos">11</span><span class="w">    </span><span class="p">}</span><span class="w"></span>
+<span class="linenos">12</span><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">path</span><span class="p">;</span><span class="w"></span>
+<span class="linenos">13</span><span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">警告</p>
+<p>由于 WebAssembly 的内存不受 JavaScript 的 GC 机制的控制，
+因此任何在 CanvasKit 中使用 <code class="docutils literal notranslate"><span class="pre">new</span></code> 或者 <code class="docutils literal notranslate"><span class="pre">Make*</span></code> 系列函数创建的 JavaScript 对象，
+都必须使用 <code class="docutils literal notranslate"><span class="pre">delete</span></code> 方法手动释放其内存 ，否则 Cocoa 会因为内存耗尽而异常退出。</p>
+</div>
+</section>
+<section id="id2">
+<h2><span class="section-number">2.3. </span>简单绘图实例<a class="headerlink" href="#id2" title="此标题的永久链接"></a></h2>
+<p>使用 <code class="docutils literal notranslate"><span class="pre">MakeSurface</span></code> 函数可以创建一个具有 CPU 光栅化能力的绘图表面（Surface），
+然后可以获得在该表面上的 <code class="docutils literal notranslate"><span class="pre">Canvas</span></code> 对象来进行绘图。
+创建的 Surface 使用 SRGB 色彩空间，未预乘 alpha 的 8888 颜色格式（像素内存对于 JavaScript
+而言是不可访问的）。</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="k">import</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">std</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;core&#39;</span><span class="p">;</span><span class="w"></span>
+<span class="linenos"> 2</span><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="nx">canvaskit</span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;internal://canvaskit&#39;</span><span class="p">;</span><span class="w"></span>
+<span class="linenos"> 3</span>
+<span class="linenos"> 4</span><span class="c1">// 宽 256 像素，高 256 像素的绘图表面</span><span class="w"></span>
+<span class="linenos"> 5</span><span class="kd">const</span><span class="w"> </span><span class="nx">surface</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">canvaskit</span><span class="p">.</span><span class="nx">MakeSurface</span><span class="p">(</span><span class="mf">256</span><span class="p">,</span><span class="w"> </span><span class="mf">256</span><span class="p">);</span><span class="w"></span>
+<span class="linenos"> 6</span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="nx">surface</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="linenos"> 7</span><span class="w">    </span><span class="k">throw</span><span class="w"> </span><span class="ne">Error</span><span class="p">(</span><span class="s1">&#39;Failed to create a surface&#39;</span><span class="p">);</span><span class="w"></span>
+<span class="linenos"> 8</span><span class="p">}</span><span class="w"></span>
+<span class="linenos"> 9</span>
+<span class="linenos">10</span><span class="kd">const</span><span class="w"> </span><span class="nx">canvas</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">surface</span><span class="p">.</span><span class="nx">getCanvas</span><span class="p">();</span><span class="w"></span>
+<span class="linenos">11</span>
+<span class="linenos">12</span><span class="c1">// 在此处使用 canvas 对象进行绘图</span><span class="w"></span>
+<span class="linenos">13</span><span class="c1">// ...</span><span class="w"></span>
+<span class="linenos">14</span>
+<span class="linenos">15</span><span class="c1">// 将当前 Surface 内容保存为 Image 对象，该对象独立于 Surface 存在，</span><span class="w"></span>
+<span class="linenos">16</span><span class="c1">// 也需要手动 delete</span><span class="w"></span>
+<span class="linenos">17</span><span class="kd">const</span><span class="w"> </span><span class="nx">snapshot</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">surface</span><span class="p">.</span><span class="nx">makeImageSnapshot</span><span class="p">();</span><span class="w"></span>
+<span class="linenos">18</span>
+<span class="linenos">19</span><span class="c1">// 将 Image 对象编码（默认为 PNG），转换为 Buffer 对象，</span><span class="w"></span>
+<span class="linenos">20</span><span class="c1">// 使用 MakeFromAdoptBuffer 来避免不必要的内存拷贝</span><span class="w"></span>
+<span class="linenos">21</span><span class="kd">const</span><span class="w"> </span><span class="nx">buffer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">std</span><span class="p">.</span><span class="nx">Buffer</span><span class="p">.</span><span class="nx">MakeFromAdoptBuffer</span><span class="p">(</span><span class="nx">snapshot</span><span class="p">.</span><span class="nx">encodeToBytes</span><span class="p">());</span><span class="w"></span>
+<span class="linenos">22</span>
+<span class="linenos">23</span><span class="c1">// 释放内存</span><span class="w"></span>
+<span class="linenos">24</span><span class="nx">snapshot</span><span class="p">.</span><span class="ow">delete</span><span class="p">();</span><span class="w"></span>
+<span class="linenos">25</span><span class="nx">surface</span><span class="p">.</span><span class="ow">delete</span><span class="p">();</span><span class="w"></span>
+<span class="linenos">26</span>
+<span class="linenos">27</span><span class="c1">// 将该 Buffer 对象写入文件系统</span><span class="w"></span>
+<span class="linenos">28</span><span class="nx">std</span><span class="p">.</span><span class="nx">File</span><span class="p">.</span><span class="nx">WriteFileSync</span><span class="p">(</span><span class="s1">&#39;./output.png&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">buffer</span><span class="p">);</span><span class="w"></span>
+<span class="linenos">29</span>
+<span class="linenos">30</span><span class="c1">// 或使用异步方式以获得更为精细的控制</span><span class="w"></span>
+<span class="linenos">31</span><span class="nx">std</span><span class="p">.</span><span class="nx">File</span><span class="p">.</span><span class="nx">Open</span><span class="p">(</span><span class="s1">&#39;./output.png&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">std</span><span class="p">.</span><span class="nx">File</span><span class="p">.</span><span class="nx">O_RDWR</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">std</span><span class="p">.</span><span class="nx">File</span><span class="p">.</span><span class="nx">O_CREAT</span><span class="p">,</span><span class="w"> </span><span class="mo">0o644</span><span class="p">).</span><span class="nx">then</span><span class="p">((</span><span class="nx">file</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="linenos">32</span><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">file</span><span class="p">.</span><span class="nx">write</span><span class="p">(</span><span class="nx">buffer</span><span class="p">,</span><span class="w"> </span><span class="mf">0</span><span class="p">,</span><span class="w"> </span><span class="nx">buffer</span><span class="p">.</span><span class="nx">length</span><span class="p">,</span><span class="w"> </span><span class="mf">0</span><span class="p">);</span><span class="w"></span>
+<span class="linenos">33</span><span class="p">}).</span><span class="nx">then</span><span class="p">(()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="linenos">34</span><span class="w">    </span><span class="nx">std</span><span class="p">.</span><span class="nx">print</span><span class="p">(</span><span class="s2">&quot;Done!\n&quot;</span><span class="p">);</span><span class="w"></span>
+<span class="linenos">35</span><span class="p">}).</span><span class="k">catch</span><span class="p">((</span><span class="nx">error</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="linenos">36</span><span class="w">    </span><span class="nx">std</span><span class="p">.</span><span class="nx">print</span><span class="p">(</span><span class="s2">&quot;Failed to save image file\n&quot;</span><span class="p">);</span><span class="w"></span>
+<span class="linenos">37</span><span class="p">});</span><span class="w"></span>
+</pre></div>
+</div>
+<p>上面所演示的绘图方式可以在不创建窗口的情况下进行绘图，其结果是一张像素图。
+这一绘图流程全部使用 CPU 进行光栅化，且光栅化代码是通过 WebAssembly 执行的，
+因此性能并不理想，但这一机制仍然十分适合在运行时动态地产生一些纹理对象
+（CanvasKit 中的 <code class="docutils literal notranslate"><span class="pre">Image</span></code> 和 <code class="docutils literal notranslate"><span class="pre">Bitmap</span></code> 对象可以很容易地转换为 Glamor 中的 <code class="docutils literal notranslate"><span class="pre">CkImage</span></code> 和 <code class="docutils literal notranslate"><span class="pre">CkBitmap</span></code>
+对象，进而转换为由 Glamor 管理的纹理对象，这在后面的小节中将会介绍），
+尤其是在目前 Glamor 还不支持离屏（Offscreen）渲染的情况下。</p>
+</section>
+<section id="picture">
+<h2><span class="section-number">2.4. </span>利用 Picture 处理绘图指令<a class="headerlink" href="#picture" title="此标题的永久链接"></a></h2>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="rdrfw_overview.html" class="btn btn-neutral float-left" title="1. 渲染框架概览" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> 上一页</a>
+        <a href="rdrfw_async_rendering_model.html" class="btn btn-neutral float-right" title="3. Glamor 异步渲染模型" accesskey="n" rel="next">下一页 <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; 版权所有 2022, OpenACG Group.</p>
+  </div>
+
+  利用 <a href="https://www.sphinx-doc.org/">Sphinx</a> 构建，使用了 
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">主题</a>
+    由 <a href="https://readthedocs.org">Read the Docs</a>开发.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
