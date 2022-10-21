@@ -145,3 +145,56 @@ CanvasKit 已经作为内建模块包含在 Cocoa 中，可以使用如下语句
 ----------------------------
 利用 Picture 处理绘图指令
 ----------------------------
+
+Picture 可以保存绘制过程中执行的绘制指令和绘制使用到的数据对象（例如像素图、字体等），
+然后将它们重放（Replay）就可以完全复原原先的绘制流程和绘制结果。
+可以将 Picture 比喻为绘图脚本，包含了高度过程化的绘图指令。
+一个 Picture 可以由 CanvasKit 中的 ``SkPicture`` 对象来表示。
+
+要创建一个 Picture，无需通过创建绘制表面来获得 Canvas，而是通过创建
+``PictureRecorder`` 对象来获得一个适用于 Picture 的 Canvas 对象。
+
+下面的示例生成一个 ``Picture`` 对象：
+
+.. code-block:: javascript
+    :linenos:
+
+    const recorder = new canvaskit.PictureRecorder();
+
+    // 用户指定一个矩形 rect 用于表示 Picture 的绘制边界，
+    // 超出该边界的绘图内容可能会被裁剪（Picture 并不强制要求 replay 时必须进行这个裁剪工作），
+    // 该矩形称为 cull rectangle.
+    const canvas = recorder.beginRecording(rect);
+
+    // 使用 canvas 对象来绘图
+    // ...
+
+    // 该 SkPicture 对象也需要在不需要时手动 delete
+    const picture = recorder.finishRecordingAsPicture();
+
+    // recorder 对象不再需要，及时 delete
+    recorder.delete();
+
+``SkPicture`` 对象可以被序列化（通常该操作开销很小，针对 Glamor 的应用场景还有特定优化，
+在后面的小节中将会介绍），也可以被反序列化。不同于 CanvasKit 官方文档介绍的一点是，
+Cocoa CanvasKit 的 ``SkPicture`` 对象按照用途不同有两种序列化方式：
+
+*标准格式序列化*
+    使用 ``SkPicture.serialize`` 方法可以按照 Skia 的标准格式序列化一个 Picture，
+    所有的像素图、字体等资源都会在序列化的 Picture 中被复制一份并作为序列化结果的一部分。
+    或者说，序列化后的 Picture 是完全独立的，自带了 replay 需要的所有资源，没有对外部资源的引用。
+    自然，标准格式的 Picture 会占用相对较多的内存空间。
+
+*为内部传输优化的序列化*
+    使用 ``SkPicture.serializeForTransfer`` 方法可以得到专为内部传输优化的序列化结果，
+    在介绍 Glamor 和 CanvasKit 组合使用的小节中会详细介绍这种序列化方式。
+
+两种序列化方式都返回包含了序列化结果的 ``Uint8Array`` 对象。可以将序列化的 Picture
+保存到文件系统，一般用 ``.skp`` 作为文件后缀名。将其保存到文件系统上之后，
+还可以把该文件上传到 `Skia 的在线 Debugger <https://debugger.skia.org/>`_ 以逐步分析绘图指令。
+
+若要反序列化，直接使用 ``MakePicture`` 方法即可。
+
+.. note::
+    注意，``MakePicture`` 方法只能反序列化标准格式的 Picture。
+    只有 Glamor 的 ``CkPicture`` 对象有能力反序列化第二种 Picture 格式。

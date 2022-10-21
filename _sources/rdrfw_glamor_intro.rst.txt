@@ -1,0 +1,67 @@
+==================
+Glamor 渲染器简介
+==================
+
+Cocoa 的 2D 渲染器叫做 Glamor，在代码中常常缩写为 GL（Cocoa 的文档、代码中若非特别指明，
+所有的 GL 缩写均是指 Glamor 渲染器，而不是 OpenGL）。
+Glamor 专为屏上渲染设计，提供了图层树渲染、光栅化缓存等特性，还负责与窗口系统交互、处理输入事件等工作。
+Glamor 运行在独立的线程，执行异步渲染，这一点我们将在下一节中介绍。
+
+要在 JavaScript 中使用 Glamor 渲染器，只需用 ``import`` 语句导入即可：
+
+.. code-block:: javascript
+
+    import * as GL from 'glamor';
+    // 或者：
+    import * as GL from 'synthetic://glamor';
+
+``GL`` 对象包含了 Glamor 的所有公开符号。
+Glamor 渲染器不仅提供了基于图层树的光栅化引擎，还包含对 Window System 的抽象（如 Wayland），
+JavaScript 可以无需关心底层窗口管理和缓冲区管理的细节，直接创建指定尺寸的窗口，
+然后使用指定的渲染后端（CPU 渲染器或 GPU 渲染器）在窗口上绘制内容。
+
+在 JavaScript 中使用 Glamor 渲染器的第一步是初始化它：
+
+.. code-block:: javascript
+
+    GL.RenderHost.Initialize({
+        name: 'Test Application',
+        major: 1,
+        minor: 0,
+        patch: 0
+    });
+
+在这里，用户被要求提供一个 ``ApplicationInfo`` 对象，用于描述 *用户的应用程序* 的相关信息。
+这些信息仅仅用于标识用户的应用程序（例如，当 Vulkan 请求应用程序的名称时，我们会使用 ``name`` 属性提供的值），
+不会对渲染器的行为造成任何影响。
+
+.. note::
+    此处 ``name`` 属性提供的值不会被设定为窗口的默认标题，窗口的默认标题为空，需要用户显式地设置。
+
+``RenderHost.Initialize`` 函数初始化渲染器全局实例，它同时创建一个渲染线程（在下一节中将详细介绍）
+以便执行异步渲染任务。一旦该初始化函数被调用，渲染器即进入活动（Active）状态，JavaScript 事件循环将不会退出
+（随时等待来自渲染线程的消息）。要释放这个活动的渲染器实例，使用 ``RenderHost.Dispose`` 函数即可：
+
+.. code-block:: javascript
+
+    GL.RenderHost.Dispose();
+
+``Dispose`` 函数是同步的，该函数将强制停止渲染线程，并释放渲染器所使用的资源，渲染器进入初始化前的状态，
+JavaScript 事件循环不需再等待渲染线程的消息，如果此后事件循环为空，Cocoa 进程将按正常流程退出。
+
+.. warning::
+    所有对 Glamor 渲染器的进一步操作，都必须先进行上述初始化步骤，否则 Cocoa 的行为未定义。
+    同时，全局渲染器实例（Glamor 实例）是唯一的，这意味着
+    *在同一个 Cocoa 进程中，不能同时存在多个 Glamor 实例* 。
+    ``Initialize`` 函数只能被调用一次（除非此前已经调用了 ``Dispose`` 函数），
+    在一个已经初始化 Glamor 的进程中再次调用 ``Initialize`` 函数的行为是未定义的。
+
+最后需要注意的是，Glamor 中一些对象的资源管理不依赖于 JavaScript 的垃圾回收机制（之后您会看到这样做的必要性），
+对于那些对象，用户需要显式地调用类似 ``dispose`` 或 ``close`` 一类的方法，
+将它们持有的资源释放。
+
+.. warning::
+    一旦一个对象被 dispose，就不应该再以任何方式继续使用它。
+    调用一个 disposed 状态的对象上的任何方法或访问其上的任何属性都是未定义行为。
+
+若非特别注明，后文中的所有涉及 Glamor 的代码片段，都默认假设用户已经完成初始化工作。

@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>3. Glamor 异步渲染模型 &mdash; Cocoa  文档</title>
+  <title>4. Glamor 异步渲染模型 &mdash; Cocoa  文档</title>
       <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
@@ -23,8 +23,8 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="索引" href="genindex.html" />
     <link rel="search" title="搜索" href="search.html" />
-    <link rel="next" title="4. 窗口系统与平台抽象" href="rdrfw_platform_abstraction.html" />
-    <link rel="prev" title="2. CanvasKit 绘图 API" href="rdrfw_canvaskit_rendering_api.html" /> 
+    <link rel="next" title="5. 窗口系统与平台抽象" href="rdrfw_platform_abstraction.html" />
+    <link rel="prev" title="3. Glamor 渲染器简介" href="rdrfw_glamor_intro.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -55,21 +55,22 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="rdrfw_overview.html">1. 渲染框架概览</a></li>
 <li class="toctree-l1"><a class="reference internal" href="rdrfw_canvaskit_rendering_api.html">2. CanvasKit 绘图 API</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">3. Glamor 异步渲染模型</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#id1">3.1. 概览</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#id2">3.2. 理解异步函数调用和信号槽</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#concepts">3.2.1. Concepts</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id3">3.2.2. 原生层实现</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#javascript">3.2.3. JavaScript 中的异步调用和信号槽</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rdrfw_glamor_intro.html">3. Glamor 渲染器简介</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">4. Glamor 异步渲染模型</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id1">4.1. 概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id2">4.2. 理解异步函数调用和信号槽</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#concepts">4.2.1. Concepts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">4.2.2. 原生层实现</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#javascript">4.2.3. JavaScript 中的异步调用和信号槽</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#api">3.3. 渲染线程控制相关 API</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#id4">3.4. 追踪渲染线程上的消息传递</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#inspectobject">3.5. 可异步调用对象上的 <code class="docutils literal notranslate"><span class="pre">inspectObject</span></code> 方法</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#id5">3.6. 线程池中的异步任务</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#api">4.3. 渲染线程控制相关 API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id4">4.4. 追踪渲染线程上的消息传递</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#inspectobject">4.5. 可异步调用对象上的 <code class="docutils literal notranslate"><span class="pre">inspectObject</span></code> 方法</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id5">4.6. 线程池中的异步任务</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="rdrfw_platform_abstraction.html">4. 窗口系统与平台抽象</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rdrfw_platform_abstraction.html">5. 窗口系统与平台抽象</a></li>
 </ul>
 
         </div>
@@ -86,7 +87,7 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
-      <li><span class="section-number">3. </span>Glamor 异步渲染模型</li>
+      <li><span class="section-number">4. </span>Glamor 异步渲染模型</li>
       <li class="wy-breadcrumbs-aside">
             <a href="_sources/rdrfw_async_rendering_model.rst.txt" rel="nofollow"> 查看页面源码</a>
       </li>
@@ -97,9 +98,9 @@
            <div itemprop="articleBody">
              
   <section id="glamor">
-<h1><span class="section-number">3. </span>Glamor 异步渲染模型<a class="headerlink" href="#glamor" title="此标题的永久链接"></a></h1>
+<h1><span class="section-number">4. </span>Glamor 异步渲染模型<a class="headerlink" href="#glamor" title="此标题的永久链接"></a></h1>
 <section id="id1">
-<h2><span class="section-number">3.1. </span>概览<a class="headerlink" href="#id1" title="此标题的永久链接"></a></h2>
+<h2><span class="section-number">4.1. </span>概览<a class="headerlink" href="#id1" title="此标题的永久链接"></a></h2>
 <p>Cocoa 是一个多线程程序，除了由 libuv 启动的线程池外，Cocoa 中最为重要的线程可能就是
 <em>渲染线程（Rendering Thread）</em> 了。
 渲染线程负责了所有图形资源的获取、管理和释放，并实现了一系列异步渲染 API 和信号槽机制。
@@ -108,9 +109,9 @@
 <p>总而言之，渲染线程实现了两个功能，异步渲染 API 和图形资源管理。</p>
 </section>
 <section id="id2">
-<h2><span class="section-number">3.2. </span>理解异步函数调用和信号槽<a class="headerlink" href="#id2" title="此标题的永久链接"></a></h2>
+<h2><span class="section-number">4.2. </span>理解异步函数调用和信号槽<a class="headerlink" href="#id2" title="此标题的永久链接"></a></h2>
 <section id="concepts">
-<h3><span class="section-number">3.2.1. </span>Concepts<a class="headerlink" href="#concepts" title="此标题的永久链接"></a></h3>
+<h3><span class="section-number">4.2.1. </span>Concepts<a class="headerlink" href="#concepts" title="此标题的永久链接"></a></h3>
 <p>我们首先介绍一些概念，在后文中会使用到：</p>
 <dl class="simple">
 <dt><em>操作（Operation）</em></dt><dd><p>指由主线程发起的函数调用，该调用并不会立刻执行，而是被提交到消息队列中，
@@ -125,7 +126,7 @@
 </dl>
 </section>
 <section id="id3">
-<h3><span class="section-number">3.2.2. </span>原生层实现<a class="headerlink" href="#id3" title="此标题的永久链接"></a></h3>
+<h3><span class="section-number">4.2.2. </span>原生层实现<a class="headerlink" href="#id3" title="此标题的永久链接"></a></h3>
 <div class="admonition note">
 <p class="admonition-title">备注</p>
 <p>没有 C++ 经验和多线程开发经验的读者可以跳过此部分，不影响后续的阅读。</p>
@@ -153,7 +154,7 @@
 该对象将直接被传递给用户注册的槽函数。</p>
 </section>
 <section id="javascript">
-<h3><span class="section-number">3.2.3. </span>JavaScript 中的异步调用和信号槽<a class="headerlink" href="#javascript" title="此标题的永久链接"></a></h3>
+<h3><span class="section-number">4.2.3. </span>JavaScript 中的异步调用和信号槽<a class="headerlink" href="#javascript" title="此标题的永久链接"></a></h3>
 <p>在异步函数调用和信号槽这两大异步机制中，有两个主要角色：RenderHost 和 RenderClient，
 RenderHost 是对主线程（JavaScript 线程）的抽象，而 RenderClient 则是对渲染线程的抽象。</p>
 <p>RenderHost 可以对 RenderClient 发起函数调用，但是该函数调用并不实际在 RenderHost 上执行，
@@ -206,7 +207,7 @@ RenderHost 是对主线程（JavaScript 线程）的抽象，而 RenderClient �
 </section>
 </section>
 <section id="api">
-<h2><span class="section-number">3.3. </span>渲染线程控制相关 API<a class="headerlink" href="#api" title="此标题的永久链接"></a></h2>
+<h2><span class="section-number">4.3. </span>渲染线程控制相关 API<a class="headerlink" href="#api" title="此标题的永久链接"></a></h2>
 <div class="admonition note">
 <p class="admonition-title">备注</p>
 <p>关于 API 的详细信息，读者参见 API 文档。本文档不会详细介绍每个 API。
@@ -238,7 +239,7 @@ RenderHost 是对主线程（JavaScript 线程）的抽象，而 RenderClient �
 </div>
 </section>
 <section id="id4">
-<h2><span class="section-number">3.4. </span>追踪渲染线程上的消息传递<a class="headerlink" href="#id4" title="此标题的永久链接"></a></h2>
+<h2><span class="section-number">4.4. </span>追踪渲染线程上的消息传递<a class="headerlink" href="#id4" title="此标题的永久链接"></a></h2>
 <p>在 Cocoa 启动时添加 <code class="docutils literal notranslate"><span class="pre">--gl-transfer-queue-profile</span></code>
 命令行选项可以生成对渲染线程消息队列的 profiling 报告，当 Cocoa 正常退出后，
 会在工作目录生成一个 <code class="docutils literal notranslate"><span class="pre">transfer-profiling-PID.json</span></code> 文件，以 JSON 格式保存了 profiling 结果。</p>
@@ -382,7 +383,7 @@ RenderHost 是对主线程（JavaScript 线程）的抽象，而 RenderClient �
 </dl>
 </section>
 <section id="inspectobject">
-<h2><span class="section-number">3.5. </span>可异步调用对象上的 <code class="docutils literal notranslate"><span class="pre">inspectObject</span></code> 方法<a class="headerlink" href="#inspectobject" title="此标题的永久链接"></a></h2>
+<h2><span class="section-number">4.5. </span>可异步调用对象上的 <code class="docutils literal notranslate"><span class="pre">inspectObject</span></code> 方法<a class="headerlink" href="#inspectobject" title="此标题的永久链接"></a></h2>
 <p>如果一个来自 Glamor 的 JavaScript 对象具有 <code class="docutils literal notranslate"><span class="pre">connect</span></code> 和 <code class="docutils literal notranslate"><span class="pre">disconnect</span></code>
 方法（即它们继承于 <code class="docutils literal notranslate"><span class="pre">RenderClientObject</span></code> 对象），就可以调用这些对象上的
 <code class="docutils literal notranslate"><span class="pre">inspectObject</span></code> 方法来获得有关此异步对象的信息。</p>
@@ -408,7 +409,7 @@ RenderHost 是对主线程（JavaScript 线程）的抽象，而 RenderClient �
 </div>
 </section>
 <section id="id5">
-<h2><span class="section-number">3.6. </span>线程池中的异步任务<a class="headerlink" href="#id5" title="此标题的永久链接"></a></h2>
+<h2><span class="section-number">4.6. </span>线程池中的异步任务<a class="headerlink" href="#id5" title="此标题的永久链接"></a></h2>
 <p>Glamor 中并非所有的异步任务都由渲染线程执行，一些涉及到文件读写的操作也是异步的，
 但是它们可能交由线程池完成，例如 <code class="docutils literal notranslate"><span class="pre">CkImage.MakeFromEncodedFile</span></code> 方法，
 这可能有助于用户利用线程池可并行的特性改善性能。例如，对于 <code class="docutils literal notranslate"><span class="pre">CkImage.MakeFromEncodedFile</span></code>
@@ -435,8 +436,8 @@ Cocoa 总是保证这些异步操作会按照约定返回正确的结果，且�
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="rdrfw_canvaskit_rendering_api.html" class="btn btn-neutral float-left" title="2. CanvasKit 绘图 API" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> 上一页</a>
-        <a href="rdrfw_platform_abstraction.html" class="btn btn-neutral float-right" title="4. 窗口系统与平台抽象" accesskey="n" rel="next">下一页 <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="rdrfw_glamor_intro.html" class="btn btn-neutral float-left" title="3. Glamor 渲染器简介" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> 上一页</a>
+        <a href="rdrfw_platform_abstraction.html" class="btn btn-neutral float-right" title="5. 窗口系统与平台抽象" accesskey="n" rel="next">下一页 <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

@@ -23,7 +23,7 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="索引" href="genindex.html" />
     <link rel="search" title="搜索" href="search.html" />
-    <link rel="next" title="3. Glamor 异步渲染模型" href="rdrfw_async_rendering_model.html" />
+    <link rel="next" title="3. Glamor 渲染器简介" href="rdrfw_glamor_intro.html" />
     <link rel="prev" title="1. 渲染框架概览" href="rdrfw_overview.html" /> 
 </head>
 
@@ -61,8 +61,9 @@
 <li class="toctree-l2"><a class="reference internal" href="#picture">2.4. 利用 Picture 处理绘图指令</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="rdrfw_async_rendering_model.html">3. Glamor 异步渲染模型</a></li>
-<li class="toctree-l1"><a class="reference internal" href="rdrfw_platform_abstraction.html">4. 窗口系统与平台抽象</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rdrfw_glamor_intro.html">3. Glamor 渲染器简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rdrfw_async_rendering_model.html">4. Glamor 异步渲染模型</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rdrfw_platform_abstraction.html">5. 窗口系统与平台抽象</a></li>
 </ul>
 
         </div>
@@ -212,6 +213,52 @@ Cocoa 也引入了 CanvasKit 来作为标准 2D 绘图的 API。</p>
 </section>
 <section id="picture">
 <h2><span class="section-number">2.4. </span>利用 Picture 处理绘图指令<a class="headerlink" href="#picture" title="此标题的永久链接"></a></h2>
+<p>Picture 可以保存绘制过程中执行的绘制指令和绘制使用到的数据对象（例如像素图、字体等），
+然后将它们重放（Replay）就可以完全复原原先的绘制流程和绘制结果。
+可以将 Picture 比喻为绘图脚本，包含了高度过程化的绘图指令。
+一个 Picture 可以由 CanvasKit 中的 <code class="docutils literal notranslate"><span class="pre">SkPicture</span></code> 对象来表示。</p>
+<p>要创建一个 Picture，无需通过创建绘制表面来获得 Canvas，而是通过创建
+<code class="docutils literal notranslate"><span class="pre">PictureRecorder</span></code> 对象来获得一个适用于 Picture 的 Canvas 对象。</p>
+<p>下面的示例生成一个 <code class="docutils literal notranslate"><span class="pre">Picture</span></code> 对象：</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="kd">const</span><span class="w"> </span><span class="nx">recorder</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">canvaskit</span><span class="p">.</span><span class="nx">PictureRecorder</span><span class="p">();</span><span class="w"></span>
+<span class="linenos"> 2</span>
+<span class="linenos"> 3</span><span class="c1">// 用户指定一个矩形 rect 用于表示 Picture 的绘制边界，</span><span class="w"></span>
+<span class="linenos"> 4</span><span class="c1">// 超出该边界的绘图内容可能会被裁剪（Picture 并不强制要求 replay 时必须进行这个裁剪工作），</span><span class="w"></span>
+<span class="linenos"> 5</span><span class="c1">// 该矩形称为 cull rectangle.</span><span class="w"></span>
+<span class="linenos"> 6</span><span class="kd">const</span><span class="w"> </span><span class="nx">canvas</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">recorder</span><span class="p">.</span><span class="nx">beginRecording</span><span class="p">(</span><span class="nx">rect</span><span class="p">);</span><span class="w"></span>
+<span class="linenos"> 7</span>
+<span class="linenos"> 8</span><span class="c1">// 使用 canvas 对象来绘图</span><span class="w"></span>
+<span class="linenos"> 9</span><span class="c1">// ...</span><span class="w"></span>
+<span class="linenos">10</span>
+<span class="linenos">11</span><span class="c1">// 该 SkPicture 对象也需要在不需要时手动 delete</span><span class="w"></span>
+<span class="linenos">12</span><span class="kd">const</span><span class="w"> </span><span class="nx">picture</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">recorder</span><span class="p">.</span><span class="nx">finishRecordingAsPicture</span><span class="p">();</span><span class="w"></span>
+<span class="linenos">13</span>
+<span class="linenos">14</span><span class="c1">// recorder 对象不再需要，及时 delete</span><span class="w"></span>
+<span class="linenos">15</span><span class="nx">recorder</span><span class="p">.</span><span class="ow">delete</span><span class="p">();</span><span class="w"></span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">SkPicture</span></code> 对象可以被序列化（通常该操作开销很小，针对 Glamor 的应用场景还有特定优化，
+在后面的小节中将会介绍），也可以被反序列化。不同于 CanvasKit 官方文档介绍的一点是，
+Cocoa CanvasKit 的 <code class="docutils literal notranslate"><span class="pre">SkPicture</span></code> 对象按照用途不同有两种序列化方式：</p>
+<dl class="simple">
+<dt><em>标准格式序列化</em></dt><dd><p>使用 <code class="docutils literal notranslate"><span class="pre">SkPicture.serialize</span></code> 方法可以按照 Skia 的标准格式序列化一个 Picture，
+所有的像素图、字体等资源都会在序列化的 Picture 中被复制一份并作为序列化结果的一部分。
+或者说，序列化后的 Picture 是完全独立的，自带了 replay 需要的所有资源，没有对外部资源的引用。
+自然，标准格式的 Picture 会占用相对较多的内存空间。</p>
+</dd>
+<dt><em>为内部传输优化的序列化</em></dt><dd><p>使用 <code class="docutils literal notranslate"><span class="pre">SkPicture.serializeForTransfer</span></code> 方法可以得到专为内部传输优化的序列化结果，
+在介绍 Glamor 和 CanvasKit 组合使用的小节中会详细介绍这种序列化方式。</p>
+</dd>
+</dl>
+<p>两种序列化方式都返回包含了序列化结果的 <code class="docutils literal notranslate"><span class="pre">Uint8Array</span></code> 对象。可以将序列化的 Picture
+保存到文件系统，一般用 <code class="docutils literal notranslate"><span class="pre">.skp</span></code> 作为文件后缀名。将其保存到文件系统上之后，
+还可以把该文件上传到 <a class="reference external" href="https://debugger.skia.org/">Skia 的在线 Debugger</a> 以逐步分析绘图指令。</p>
+<p>若要反序列化，直接使用 <code class="docutils literal notranslate"><span class="pre">MakePicture</span></code> 方法即可。</p>
+<div class="admonition note">
+<p class="admonition-title">备注</p>
+<p>注意，<code class="docutils literal notranslate"><span class="pre">MakePicture</span></code> 方法只能反序列化标准格式的 Picture。
+只有 Glamor 的 <code class="docutils literal notranslate"><span class="pre">CkPicture</span></code> 对象有能力反序列化第二种 Picture 格式。</p>
+</div>
 </section>
 </section>
 
@@ -220,7 +267,7 @@ Cocoa 也引入了 CanvasKit 来作为标准 2D 绘图的 API。</p>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="rdrfw_overview.html" class="btn btn-neutral float-left" title="1. 渲染框架概览" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> 上一页</a>
-        <a href="rdrfw_async_rendering_model.html" class="btn btn-neutral float-right" title="3. Glamor 异步渲染模型" accesskey="n" rel="next">下一页 <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="rdrfw_glamor_intro.html" class="btn btn-neutral float-right" title="3. Glamor 渲染器简介" accesskey="n" rel="next">下一页 <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
