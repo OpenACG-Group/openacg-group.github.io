@@ -30,4 +30,5 @@ Cocoa 用户文档
    rdrfw_canvaskit_rendering_api
    rdrfw_glamor_intro
    rdrfw_async_rendering_model
+   rdrfw_resources_management
    rdrfw_platform_abstraction

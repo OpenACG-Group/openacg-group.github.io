@@ -1,0 +1,143 @@
+========================
+Glamor 中的资源管理
+========================
+
+Glamor 中的资源是指由渲染线程所持有的所有资源，例如 GPU 上下文、VRAM 中的纹理等等。
+这些资源一般由渲染线程独立持有，且不与其它线程（尤其是主线程）共享所有权，
+但是也有一些资源可以由渲染线程和主线程共同持有，但是它们的使用和生命周期都有严格的限制，
+且受到渲染线程的追踪。
+
+使用严格的资源管理机制的意义在于，渲染线程持有大量直接与硬件（如 GPU）和系统层级 API（如 Wayland）
+强关联的资源对象，如果允许所有线程随意访问，将导致严重的竞争问题，
+同时资源的生命周期变得难以追踪。
+
+下面将介绍 Glamor 中的三种资源所有权。
+
+----------------
+异步对象直接持有
+----------------
+
+在上一节中介绍的 Glamor 异步渲染模型中，读者已经了解到异步对象
+（存在可异步调用的方法或可以主动发送信号量的对象）是渲染线程和主线程的重要接口。
+实际上，Glamor 中的大部分核心资源都由这些异步对象直接持有，
+只是对于主线程而言，这些资源是不可访问的（异步对象上不暴露出直接访问这些资源的方法），
+主线程需要通过发起异步函数调用，通过渲染线程来间接访问这些资源。
+GPU 上下文、Wayland 上下文、渲染上下文等大部分核心资源都由这种方式来管理。
+这杜绝了主线程和渲染线程同时访问到某一资源的可能性，自然也不需要通过任何锁来保护资源。
+
+可以认为，在这种情况下，所有的资源对于主线程而言都是不透明的「句柄」，
+而异步函数调用是合法访问它们的唯一方法。
+
+在 JavaScript 中，异步对象一般不能直接通过 ``new`` 来创建，
+而是通过另外一个异步对象上的某个异步方法来创建，这一过程本身也是异步的。
+例如，通过 ``RenderHost.Connect`` 函数可以创建一个 ``Display`` 对象，
+通过 ``Display`` 对象可以创建一个 ``Surface`` 对象，
+进而再通过 ``Surface`` 可以创建 ``Blender`` 对象。
+
+.. note::
+    在这类异步对象上，存在类似 ``close`` 或 ``dispose`` 一类的方法，
+    当不再使用该异步对象时，需要及时调用这些方法来销毁资源。资源并不会自动被释放。
+
+----------------------------
+主线程通过描述符持有弱引用
+----------------------------
+
+在一些情况下，我们不必为每种资源都创建一个异步对象来进行管理，
+于是 Cocoa 采用了类似文件描述符的机制，即通过描述符（一般是一个正整数）来唯一标识一个资源对象，
+使用该描述符就相当于对该资源的引用。
+
+只要存在针对某一种资源的描述符，就一定存在一个对应的 Manager 对象，
+Manager 对象负责创建、回收描述符，或通知用户程序某个描述符被回收，不再有效
+（所以这种方式称为弱引用）。描述符由它的 Manager 对象分配，
+Manager 保证每个描述符在它所管理的范围内是唯一的。
+
+.. warning::
+    Manager 仅仅保证在它的作用范围内描述符与资源的映射关系唯一，而不是全局唯一。
+    不同的 Manager 可能产生数值上相同描述符，但是它们往往并不指向同一个资源。
+    即是说，描述符只有在 Manager 的作用范围内才有意义。
+
+典型的使用这种方式管理的资源是用户上传的纹理对象，这些纹理往往直接被上传的 VRAM，
+由渲染线程直接管理（因为渲染线程唯一地持有 GPU 上下文），而主线程通过描述符来引用它们，
+纹理对象对应的 Manager 是 ``Blender`` 对象。
+
+.. note::
+    未来的 Cocoa 版本中，可能会将纹理的 Manager 独立出来，
+    方便在不同的窗口之间共享纹理。
+
+-------------------
+主线程直接持有引用
+-------------------
+
+在某些情况下，JavaScript 希望直接持有资源的所有权（这种资源被称为 **critical resources** ），
+而渲染线程保证不会在任何时刻访问这些资源，因此这类资源是无锁的。
+
+目前 Cocoa 中仅有 ``CriticalPicture`` 对象使用这种资源管理方式，它是 ``CkPicture``
+对象的特殊形式，专用于处理含有 GPU 纹理对象等资源的 Picture 对象。以该对象为例，
+下文将介绍 critical resources 的典型生命周期。
+
+``CriticalPicture`` 对象往往来自 ``Blender`` 的 ``picture-captured`` 信号：
+
+.. code-block:: javascript
+
+    blender.connect('picture-captured', (picture) => {
+        // `picture` is an instance of CriticalPicture
+    });
+
+这标志着一个 ``CriticalPicture`` 对象在 JavaScript 中正式被创建，JavaScript
+线程拥有了对该对象所包含的所有渲染资源的全局唯一所有权。调用其 ``sanitize()``
+方法可以「净化」该 Picture 对象，得到一个平凡的 ``CkPicture`` 对象。
+
+.. note::
+    实际上， ``sanitize`` 操作会将所有保存在 GPU 内存中的纹理对象拷贝到系统内存
+    （如果没有使用硬件加速后端，仍可能导致这种拷贝，因此这一操作往往很慢），
+    得到的 ``CkPicture`` 是独立的，包含了复现绘图所需的所有资源，且不再包含对任何 GPU 资源的引用。
+
+注意，虽然 ``CriticalPicture`` 的所有权在 JavaScript 线程上，
+但是资源的生命周期本身仍然受到渲染线程的严格管理，当渲染线程没有办法继续保证该资源仍然有效时
+（例如渲染线程实例或 GPU 上下文等被销毁），渲染线程便会通知 JavaScript 线程该资源即将被强制回收。
+届时，用户通过 ``setCollectionCallback`` 方法设置的回调函数会被调用
+（在资源真正被回收之前，即在回调函数中资源尚且可用）。
+一个特殊的 API ``RenderHost.CollectCriticalSharedResources()`` 可以用于手动触发上述过程
+（对当前 Glamor 上下文中的所有 critical resources 同时起效）。
+
+.. warning::
+    自然， ``RenderHost.Dispose()`` 同样会触发这种强制回收行为（Glamor 上下文被销毁）。
+
+此外，通过 ``discardOwnership()`` 方法也可以主动放弃所有权， 这种情况下 ``setCollectionCallback()``
+设置的回调函数不会被调用。一旦上述两种情况中的一种发生， ``CriticalPicture`` 都将成为一个空的对象，
+大部分方法都不再有效（如果强行调用它们，会抛出异常）。
+
+如果上述两种情况都没有发生，那么资源将会在 ``RenderHost.Dispose()`` 被调用时以强制回收的形式被回收，
+``CriticalPicture`` 对象失效（通过 ``setCollectionCallback`` 设置的回调函数会被调用），
+而其对象本身可能会被 JavaScript 的垃圾回收机制清除，如果 JavaScript 的垃圾回收机制在最后都没有被触发，
+那么将会在 Cocoa 退出前回收这些对象。
+
+我们总结这些可能的情况：
+
+.. code-block:: javascript
+
+    /* Case 1. User discards the ownership */
+
+    picture.discardOwnership();
+    // `picture` is invalid now and should not be used anymore
+
+
+    /* Case 2. Forcely collect all the critical resources */
+
+    // Register a callback function to receive notification
+    picture.setCollectionCallback(() => {
+        std.print('picture is invalidated\n');
+    });
+    GL.RenderHost.CollectCriticalSharedResources();
+    // `picture` is invalid now and should not be used anymore
+
+
+    /* Case 3. Collected when disposing Glamor context */
+    
+    // Regsiter a callback fcuntion to receive notification
+    picture.setCollectionCallback(() => {
+        std.print('picture is invalidated\n');
+    });
+    GL.RenderHost.Dispose();
+    // `picture` is invalid now and should not be used anymore
+
