@@ -1,3 +1,96 @@
 =========================
 窗口系统与平台抽象
 =========================
+
+Glamor 将与系统相关的图形和交互 API 进行统一的抽象，保证了用户可以通过一套相对稳定的 API
+来编写 JavaScript.
+
+.. note::
+    关于接下来所介绍的对象的全部 API 信息，请参阅 API 文档，这里并不会介绍特定接口的所有 API。
+
+---------------------
+Display Interface
+---------------------
+
+在大部分桌面窗口系统中（包括现代 Windows，Wayland，现代 X11 等），
+应用程序都被允许自由地绘制窗口内容，然后向窗口管理器
+（Window Manager, 或在 Wayland 称为混成器, Compositor）提交绘制好的缓冲区，
+窗口管理器将混合所有窗口并将结果作为一整幅画面呈现在屏幕上。在这一过程中，
+应用程序必须保持与窗口管理器（或 Wayland 混成器）的通信，以便随时向其提交缓冲区或接收输入事件。
+于是，Cocoa 中用 ``Display`` 对象来抽象这种与系统窗口管理器的连接，
+一个 ``Display`` 对象实例就表示了到系统窗口管理器的一个有效连接。所有与窗口管理器的进一步交互，
+都由该 ``Display`` 对象来实现（如创建窗口等）。
+
+.. note::
+    一般情况下，一个 Cocoa 进程只创建一个 ``Display`` 实例，即使理论上用户可以创建任意多个 ``Display`` 实例。
+
+要创建 ``Display`` 实例，使用 ``RenderHost.Connect`` 方法：
+
+.. code-block:: javascript
+
+    const display = await GL.RenderHost.Connect();
+
+    // 要关闭这个 Display，可以直接使用 close 方法：
+    await display.close();
+
+关闭 ``Display`` 对象意味着断开它到窗口管理器的连接，然后回收所有资源。
+
+.. warning::
+    一旦一个 ``Display`` 对象被关闭，用户就不应该再以任何方式使用它。
+
+``Display`` 是一个异步可调用对象，当它被关闭时，会发出 ``closed`` 信号。由于一个 Cocoa 进程往往只存在一个
+``Display`` 实例，于是我们可以利用这个信号来销毁 Glamor 上下文，这样 Cocoa 可以在 ``Display`` 被关闭后正常退出，
+而不是因为 Glamor 上下文仍然活跃而继续事件循环：
+
+.. code-block:: javascript
+
+    display.connect('closed', () => {
+        GL.RenderHost.Dispose();
+    });
+
+当然，用户也可以选择不这样做，有关 Glamor 上下文如何影响 JavaScript 线程事件循环，
+在「Glamor 渲染器简介」一节中已经介绍过。
+
+---------------------
+Monitor Interface
+---------------------
+
+``Monitor`` 对象表示了该设备上的一块物理显示器（或逻辑显示器），通过该对象，用户可以获得当前显示器的重要参数。
+
+当前已插入系统的显示器列表，可以通过 ``Display`` 对象获得：
+
+.. code-block:: typescript
+
+    const monitors: GL.Monitor[] = await display.requestMonitorList();
+    for (const monitor of monitors) {
+        // Something...
+    }
+
+当一个新的显示器插入系统时， ``Display`` 对象发出 ``monitor-added`` 信号通知用户，
+而当存在的显示器被移除时，发出 ``monitor-removed`` 信号通知用户，详情参见 API 文档。
+
+对于 ``Monitor`` 对象，使用它的 ``requestPropertySet`` 方法可以获得显示器的所有属性，
+该方法并不直接返回显示器属性，而是触发一个 ``properties-changed`` 信号，用户应该在这个信号的槽函数中接收属性。
+若显示器属性发生了改变（例如用户调整了系统分辨率），也会触发 ``properties-changed`` 信号，
+用户在这个信号的槽函数中接收新的属性信息。若 ``Monitor`` 对象所表示的显示器从系统中被移除，
+除了 ``Display`` 对象发出的 ``monitor-removed`` 信号外， ``Monitor`` 对象本身还会发出 ``detached``
+信号，表示自身从 ``Display`` 上被分离，不再受到 ``Display`` 对象的管理。
+
+.. code-block:: typescript
+
+    const monitors: GL.Monitor[] = await display.requestMonitorList();
+    monitors[0].connect('properties-changed', (propertySet: GL.MonitorPropertySet) => {
+        // Receive new properties
+    });
+
+    monitors[0].connect('detached', () => {
+        // Monitor was removed from the system
+    });
+
+    // Trigger properties-changed signal
+    monitors[0].requestPropertySet();
+
+---------------------
+Surface Interface
+---------------------
+

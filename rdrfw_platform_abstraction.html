@@ -57,7 +57,12 @@
 <li class="toctree-l1"><a class="reference internal" href="rdrfw_glamor_intro.html">3. Glamor 渲染器简介</a></li>
 <li class="toctree-l1"><a class="reference internal" href="rdrfw_async_rendering_model.html">4. Glamor 异步渲染模型</a></li>
 <li class="toctree-l1"><a class="reference internal" href="rdrfw_resources_management.html">5. Glamor 中的资源管理</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">6. 窗口系统与平台抽象</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">6. 窗口系统与平台抽象</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#display-interface">6.1. Display Interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#monitor-interface">6.2. Monitor Interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#surface-interface">6.3. Surface Interface</a></li>
+</ul>
+</li>
 </ul>
 
         </div>
@@ -86,6 +91,84 @@
              
   <section id="id1">
 <h1><span class="section-number">6. </span>窗口系统与平台抽象<a class="headerlink" href="#id1" title="此标题的永久链接"></a></h1>
+<p>Glamor 将与系统相关的图形和交互 API 进行统一的抽象，保证了用户可以通过一套相对稳定的 API
+来编写 JavaScript.</p>
+<div class="admonition note">
+<p class="admonition-title">备注</p>
+<p>关于接下来所介绍的对象的全部 API 信息，请参阅 API 文档，这里并不会介绍特定接口的所有 API。</p>
+</div>
+<section id="display-interface">
+<h2><span class="section-number">6.1. </span>Display Interface<a class="headerlink" href="#display-interface" title="此标题的永久链接"></a></h2>
+<p>在大部分桌面窗口系统中（包括现代 Windows，Wayland，现代 X11 等），
+应用程序都被允许自由地绘制窗口内容，然后向窗口管理器
+（Window Manager, 或在 Wayland 称为混成器, Compositor）提交绘制好的缓冲区，
+窗口管理器将混合所有窗口并将结果作为一整幅画面呈现在屏幕上。在这一过程中，
+应用程序必须保持与窗口管理器（或 Wayland 混成器）的通信，以便随时向其提交缓冲区或接收输入事件。
+于是，Cocoa 中用 <code class="docutils literal notranslate"><span class="pre">Display</span></code> 对象来抽象这种与系统窗口管理器的连接，
+一个 <code class="docutils literal notranslate"><span class="pre">Display</span></code> 对象实例就表示了到系统窗口管理器的一个有效连接。所有与窗口管理器的进一步交互，
+都由该 <code class="docutils literal notranslate"><span class="pre">Display</span></code> 对象来实现（如创建窗口等）。</p>
+<div class="admonition note">
+<p class="admonition-title">备注</p>
+<p>一般情况下，一个 Cocoa 进程只创建一个 <code class="docutils literal notranslate"><span class="pre">Display</span></code> 实例，即使理论上用户可以创建任意多个 <code class="docutils literal notranslate"><span class="pre">Display</span></code> 实例。</p>
+</div>
+<p>要创建 <code class="docutils literal notranslate"><span class="pre">Display</span></code> 实例，使用 <code class="docutils literal notranslate"><span class="pre">RenderHost.Connect</span></code> 方法：</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">const</span><span class="w"> </span><span class="nx">display</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">GL</span><span class="p">.</span><span class="nx">RenderHost</span><span class="p">.</span><span class="nx">Connect</span><span class="p">();</span><span class="w"></span>
+
+<span class="c1">// 要关闭这个 Display，可以直接使用 close 方法：</span><span class="w"></span>
+<span class="k">await</span><span class="w"> </span><span class="nx">display</span><span class="p">.</span><span class="nx">close</span><span class="p">();</span><span class="w"></span>
+</pre></div>
+</div>
+<p>关闭 <code class="docutils literal notranslate"><span class="pre">Display</span></code> 对象意味着断开它到窗口管理器的连接，然后回收所有资源。</p>
+<div class="admonition warning">
+<p class="admonition-title">警告</p>
+<p>一旦一个 <code class="docutils literal notranslate"><span class="pre">Display</span></code> 对象被关闭，用户就不应该再以任何方式使用它。</p>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">Display</span></code> 是一个异步可调用对象，当它被关闭时，会发出 <code class="docutils literal notranslate"><span class="pre">closed</span></code> 信号。由于一个 Cocoa 进程往往只存在一个
+<code class="docutils literal notranslate"><span class="pre">Display</span></code> 实例，于是我们可以利用这个信号来销毁 Glamor 上下文，这样 Cocoa 可以在 <code class="docutils literal notranslate"><span class="pre">Display</span></code> 被关闭后正常退出，
+而不是因为 Glamor 上下文仍然活跃而继续事件循环：</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="nx">display</span><span class="p">.</span><span class="nx">connect</span><span class="p">(</span><span class="s1">&#39;closed&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="nx">GL</span><span class="p">.</span><span class="nx">RenderHost</span><span class="p">.</span><span class="nx">Dispose</span><span class="p">();</span><span class="w"></span>
+<span class="p">});</span><span class="w"></span>
+</pre></div>
+</div>
+<p>当然，用户也可以选择不这样做，有关 Glamor 上下文如何影响 JavaScript 线程事件循环，
+在「Glamor 渲染器简介」一节中已经介绍过。</p>
+</section>
+<section id="monitor-interface">
+<h2><span class="section-number">6.2. </span>Monitor Interface<a class="headerlink" href="#monitor-interface" title="此标题的永久链接"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Monitor</span></code> 对象表示了该设备上的一块物理显示器（或逻辑显示器），通过该对象，用户可以获得当前显示器的重要参数。</p>
+<p>当前已插入系统的显示器列表，可以通过 <code class="docutils literal notranslate"><span class="pre">Display</span></code> 对象获得：</p>
+<div class="highlight-typescript notranslate"><div class="highlight"><pre><span></span><span class="kd">const</span><span class="w"> </span><span class="nx">monitors</span><span class="o">:</span><span class="w"> </span><span class="kt">GL.Monitor</span><span class="p">[]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">display</span><span class="p">.</span><span class="nx">requestMonitorList</span><span class="p">();</span><span class="w"></span>
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kd">const</span><span class="w"> </span><span class="nx">monitor</span><span class="w"> </span><span class="k">of</span><span class="w"> </span><span class="nx">monitors</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="c1">// Something...</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+<p>当一个新的显示器插入系统时， <code class="docutils literal notranslate"><span class="pre">Display</span></code> 对象发出 <code class="docutils literal notranslate"><span class="pre">monitor-added</span></code> 信号通知用户，
+而当存在的显示器被移除时，发出 <code class="docutils literal notranslate"><span class="pre">monitor-removed</span></code> 信号通知用户，详情参见 API 文档。</p>
+<p>对于 <code class="docutils literal notranslate"><span class="pre">Monitor</span></code> 对象，使用它的 <code class="docutils literal notranslate"><span class="pre">requestPropertySet</span></code> 方法可以获得显示器的所有属性，
+该方法并不直接返回显示器属性，而是触发一个 <code class="docutils literal notranslate"><span class="pre">properties-changed</span></code> 信号，用户应该在这个信号的槽函数中接收属性。
+若显示器属性发生了改变（例如用户调整了系统分辨率），也会触发 <code class="docutils literal notranslate"><span class="pre">properties-changed</span></code> 信号，
+用户在这个信号的槽函数中接收新的属性信息。若 <code class="docutils literal notranslate"><span class="pre">Monitor</span></code> 对象所表示的显示器从系统中被移除，
+除了 <code class="docutils literal notranslate"><span class="pre">Display</span></code> 对象发出的 <code class="docutils literal notranslate"><span class="pre">monitor-removed</span></code> 信号外， <code class="docutils literal notranslate"><span class="pre">Monitor</span></code> 对象本身还会发出 <code class="docutils literal notranslate"><span class="pre">detached</span></code>
+信号，表示自身从 <code class="docutils literal notranslate"><span class="pre">Display</span></code> 上被分离，不再受到 <code class="docutils literal notranslate"><span class="pre">Display</span></code> 对象的管理。</p>
+<div class="highlight-typescript notranslate"><div class="highlight"><pre><span></span><span class="kd">const</span><span class="w"> </span><span class="nx">monitors</span><span class="o">:</span><span class="w"> </span><span class="kt">GL.Monitor</span><span class="p">[]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">display</span><span class="p">.</span><span class="nx">requestMonitorList</span><span class="p">();</span><span class="w"></span>
+<span class="nx">monitors</span><span class="p">[</span><span class="mf">0</span><span class="p">].</span><span class="nx">connect</span><span class="p">(</span><span class="s1">&#39;properties-changed&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="nx">propertySet</span><span class="o">:</span><span class="w"> </span><span class="kt">GL.MonitorPropertySet</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="c1">// Receive new properties</span><span class="w"></span>
+<span class="p">});</span><span class="w"></span>
+
+<span class="nx">monitors</span><span class="p">[</span><span class="mf">0</span><span class="p">].</span><span class="nx">connect</span><span class="p">(</span><span class="s1">&#39;detached&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="c1">// Monitor was removed from the system</span><span class="w"></span>
+<span class="p">});</span><span class="w"></span>
+
+<span class="c1">// Trigger properties-changed signal</span><span class="w"></span>
+<span class="nx">monitors</span><span class="p">[</span><span class="mf">0</span><span class="p">].</span><span class="nx">requestPropertySet</span><span class="p">();</span><span class="w"></span>
+</pre></div>
+</div>
+</section>
+<section id="surface-interface">
+<h2><span class="section-number">6.3. </span>Surface Interface<a class="headerlink" href="#surface-interface" title="此标题的永久链接"></a></h2>
+</section>
 </section>
 
 
